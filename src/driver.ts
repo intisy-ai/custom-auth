@@ -1,5 +1,7 @@
 import { openaiTranslator, type IrRequest, type IrResponse, type IrStreamEvent } from "../openai-translator/dist/index.js";
-import { resolveEndpoint } from "./endpoints.js";
+// @ts-ignore
+import { getConfigValue, setConfigValue } from "../core/dist/index.js";
+import { resolveEndpoint, readEndpoints, advertisedModels, splitModel } from "./endpoints.js";
 
 type HandlerCtx = { configDir: string; log: (m: string) => void; model: string };
 type HandleIrDeps = { fetch?: typeof fetch };
@@ -60,10 +62,46 @@ export async function handleIr(ir: IrRequest, _ctx: HandlerCtx, deps: HandleIrDe
   return translator.decodeResponse(await response.text());
 }
 
+// Namespaced advertised models (`<endpointId>/<model>`) as the ProviderModel record
+// core-auth/the loader expect, labeled with the endpoint's own label for display.
+function buildModels(): Record<string, { name: string }> {
+  const labelById = new Map(readEndpoints().map((e) => [e.id, e.label]));
+  const out: Record<string, { name: string }> = {};
+  for (const namespaced of advertisedModels()) {
+    const { endpointId, upstreamModel } = splitModel(namespaced);
+    out[namespaced] = { name: (labelById.get(endpointId) ?? endpointId) + " / " + upstreamModel };
+  }
+  return out;
+}
+
+// Endpoints are edited as a single JSON-array field: their shape (baseUrl/format/models[])
+// doesn't fit the flat bool/enum/number/string fields the settings editor otherwise supports.
+// The API key is never part of this: it lives in core-auth's account store (see saveKey/keyFor
+// in endpoints.ts), reachable only through the Accounts menu, not Settings.
+function getSetting(key: string): unknown {
+  if (key === "endpoints") return JSON.stringify(getConfigValue("custom-auth", "endpoints") ?? []);
+  return getConfigValue("custom-auth", key);
+}
+
+function setSetting(key: string, value: unknown): void {
+  if (key !== "endpoints") { setConfigValue("custom-auth", key, value); return; }
+  if (value === undefined) { setConfigValue("custom-auth", "endpoints", []); return; }
+  try { setConfigValue("custom-auth", "endpoints", JSON.parse(String(value))); } catch { /* ignore malformed JSON, keep prior value */ }
+}
+
 export const driver = {
   id: "custom",
   label: "Custom endpoint",
-  models: {} as Record<string, unknown>,
+  models: buildModels(),
   handleIr,
+  settings: {
+    groups: [
+      { title: "Endpoints", fields: [
+        { key: "endpoints", label: "Endpoints (JSON)", type: "string", hint: "JSON array of {id,label,baseUrl,format,models[]}. API keys are configured in Accounts, never here." },
+      ] },
+    ],
+    get: getSetting,
+    set: setSetting,
+  },
   proxies: true,
 };

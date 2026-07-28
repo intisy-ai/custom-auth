@@ -1,7 +1,7 @@
 // core's build (tsc --noEmit + esbuild bundle) ships no declaration file for its dist.
 // @ts-ignore
 import { defineConfig } from "../core/dist/index.js";
-import { listAccounts } from "../core-auth/dist/index.js";
+import { listAccounts, addAccount } from "../core-auth/dist/index.js";
 
 export type Endpoint = { id: string; label: string; baseUrl: string; format: string; models: string[] };
 
@@ -28,4 +28,13 @@ export function resolveEndpoint(model: string): { endpointId: string; upstreamMo
   const endpoint = readEndpoints().find((e) => e.id === endpointId);
   if (!endpoint) throw new Error("custom-auth: unknown endpoint " + endpointId);
   return { endpointId, upstreamModel, endpoint, apiKey: keyFor(endpointId) };
+}
+
+export function advertisedModels(): string[] {
+  return readEndpoints().flatMap((e) => e.models.map((m) => e.id + "/" + m));
+}
+
+// Seeds the key into core-auth's account store (accounts.json), never into config/custom-auth.json.
+export function saveKey(endpointId: string, key: string): void {
+  addAccount("custom", { id: endpointId, refresh: key, enabled: true, meta: { endpointId } }, undefined);
 }
