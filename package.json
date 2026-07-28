@@ -1,0 +1,25 @@
+{
+  "name": "custom-auth",
+  "version": "0.1.0",
+  "description": "Generic provider for user-configured HTTP AI endpoints (IR <-> vendor wire via translator submodules), key via core-auth.",
+  "type": "module",
+  "main": "dist/index.js",
+  "license": "MIT",
+  "author": "intisy",
+  "repository": { "type": "git", "url": "git+https://github.com/intisy-ai/custom-auth.git" },
+  "keywords": ["ai", "intisy", "provider", "custom", "openai", "custom-auth"],
+  "files": ["dist/", "README.md", "LICENSE"],
+  "engines": { "node": ">=20.0.0" },
+  "claudeHub": {
+    "authProviders": [
+      { "name": "custom", "handler": "dist/handler.js", "models": [], "translator": "custom" }
+    ]
+  },
+  "scripts": {
+    "build:deps": "npm --prefix core-ir install && npm --prefix core-ir run build && npm --prefix openai-translator install && npm --prefix openai-translator run build && npx tsc --project core-auth/tsconfig.json",
+    "build": "npm run build:deps && npx esbuild src/index.ts --bundle --platform=node --format=esm --external:sync-bridge --outfile=dist/index.js && npx esbuild src/handler.ts --bundle --platform=node --format=esm --external:sync-bridge --outfile=dist/handler.js && npx esbuild src/driver.ts --bundle --platform=node --format=esm --external:sync-bridge --outfile=dist/driver.js",
+    "test": "vitest run",
+    "prepublishOnly": "npm run build"
+  },
+  "devDependencies": { "typescript": "^5.6.0", "vitest": "^2.1.0", "@types/node": "^22.0.0", "esbuild": "^0.21.5" }
+}
