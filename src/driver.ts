@@ -54,7 +54,8 @@ export async function handleIr(ir: IrRequest, _ctx: HandlerCtx, deps: HandleIrDe
   }
 
   if (ir.stream) {
-    throw new HandleIrError({ status: 501, body: "custom-auth streaming not implemented yet" });
+    if (!response.body) throw new HandleIrError({ status: 502, body: "custom-auth: upstream returned no body for a streamed request" });
+    return response.body.pipeThrough(await translator.decodeStream());
   }
   return translator.decodeResponse(await response.text());
 }
