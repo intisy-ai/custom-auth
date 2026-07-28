@@ -42,4 +42,26 @@ describe("custom-auth handleIr (openai, non-streaming)", () => {
     await expect(handleIr(ir, { configDir: process.env.HUB_CONFIG_DIR!, log: () => {}, model: "local/gpt-4o" }, { fetch: fetchStub } as never))
       .rejects.toMatchObject({ name: "HandleIrError", status: 429 });
   });
+
+  it("throws a 401 HandleIrError when the endpoint has no configured key", async () => {
+    const home = mkdtempSync(join(tmpdir(), "custom-auth-"));
+    const cfg = join(home, "config");
+    mkdirSync(cfg, { recursive: true });
+    writeFileSync(join(cfg, "custom-auth.json"), JSON.stringify({ endpoints: [{ id: "local", label: "Local", baseUrl: "https://ep.test/v1", format: "openai", models: ["gpt-4o"] }] }));
+    writeFileSync(join(cfg, "accounts.json"), JSON.stringify({ version: 1, providers: { custom: { accounts: [], activeIndex: 0, activeIndexByLane: {} } } }));
+    process.env.HUB_CONFIG_DIR = home;
+
+    const { handleIr } = await import("../driver.js");
+    const ir = { model: "local/gpt-4o", messages: [], stream: false } as never;
+    await expect(handleIr(ir, { configDir: home, log: () => {}, model: "local/gpt-4o" }, { fetch: vi.fn() } as never))
+      .rejects.toMatchObject({ name: "HandleIrError", status: 401 });
+  });
+
+  it("throws a 400 HandleIrError for a bare, non-namespaced model", async () => {
+    process.env.HUB_CONFIG_DIR = seedHome();
+    const { handleIr } = await import("../driver.js");
+    const ir = { model: "gpt-4o", messages: [], stream: false } as never;
+    await expect(handleIr(ir, { configDir: process.env.HUB_CONFIG_DIR!, log: () => {}, model: "gpt-4o" }, { fetch: vi.fn() } as never))
+      .rejects.toMatchObject({ name: "HandleIrError", status: 400 });
+  });
 });
