@@ -42,9 +42,6 @@ jobs:
           VERSION="${GITHUB_REF_NAME#v}"
           npm version "$VERSION" --allow-same-version --no-git-tag-version
 
-      - name: Publish unscoped
-        run: npm publish --access public
-
       - name: Publish scoped
         run: |
           npm pkg set name="@intisy-ai/custom-auth"
