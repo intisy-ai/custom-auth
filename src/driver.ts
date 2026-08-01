@@ -1,10 +1,10 @@
 import { openaiTranslator, type IrRequest, type IrResponse, type IrStreamEvent } from "../openai-translator/dist/index.js";
 // @ts-ignore
 import { getConfigValue, setConfigValue } from "../core/dist/index.js";
-import { resolveEndpoint, readEndpoints, advertisedModels, splitModel } from "./endpoints.js";
+import { resolveEndpoint, readEndpoints, advertisedModels, splitModel, writeDynamicManifest, migrateLegacyKeys } from "./endpoints.js";
 import { HandleIrError } from "./errors.js";
 
-type HandlerCtx = { configDir: string; log: (m: string) => void; model: string };
+type HandlerCtx = { configDir: string; log: (m: string) => void; model: string; provider?: string };
 type HandleIrDeps = { fetch?: typeof fetch };
 
 export { HandleIrError };
@@ -13,9 +13,9 @@ export { HandleIrError };
 // fast with a 400 rather than silently mis-encoding.
 const TRANSLATORS: Record<string, typeof openaiTranslator> = { openai: openaiTranslator };
 
-export async function handleIr(ir: IrRequest, _ctx: HandlerCtx, deps: HandleIrDeps = {}): Promise<IrResponse | ReadableStream<IrStreamEvent>> {
+export async function handleIr(ir: IrRequest, ctx: HandlerCtx, deps: HandleIrDeps = {}): Promise<IrResponse | ReadableStream<IrStreamEvent>> {
   const doFetch = deps.fetch ?? fetch;
-  const { upstreamModel, endpoint, apiKey } = resolveEndpoint(ir.model);
+  const { upstreamModel, endpoint, apiKey } = resolveEndpoint(ir.model, ctx?.provider);
   const translator = TRANSLATORS[endpoint.format];
   if (!translator) throw new HandleIrError({ status: 400, body: "custom-auth: unsupported wire format " + endpoint.format });
 
@@ -69,8 +69,24 @@ function getSetting(key: string): unknown {
 
 function setSetting(key: string, value: unknown): void {
   if (key !== "endpoints") { setConfigValue("custom-auth", key, value); return; }
-  if (value === undefined) { setConfigValue("custom-auth", "endpoints", []); return; }
-  try { setConfigValue("custom-auth", "endpoints", JSON.parse(String(value))); } catch { /* ignore malformed JSON, keep prior value */ }
+  if (value === undefined) { setConfigValue("custom-auth", "endpoints", []); }
+  else { try { setConfigValue("custom-auth", "endpoints", JSON.parse(String(value))); } catch { return; /* malformed JSON, keep prior value + manifest */ } }
+  writeDynamicManifest();
+}
+
+// One first-class provider per configured endpoint (its own id, models, and account pool), so
+// each endpoint appears as a real provider rather than a namespaced model on a single "custom"
+// provider. Returns [] when no endpoints are configured. Never throws: enumeration must stay
+// cheap and safe (a config read + a best-effort key migration).
+export function resolveProviders(): Array<{ id: string; label: string; models: Record<string, { name: string }>; hasOAuth: false; accountPool: string }> {
+  try { migrateLegacyKeys(); } catch { /* best-effort */ }
+  return readEndpoints().map((e) => ({
+    id: e.id,
+    label: e.label,
+    models: Object.fromEntries(e.models.map((m) => [m, { name: m }])),
+    hasOAuth: false,
+    accountPool: e.id,
+  }));
 }
 
 export const driver = {
