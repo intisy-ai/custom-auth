@@ -1,8 +1,9 @@
 import { openaiTranslator, type IrRequest, type IrResponse, type IrStreamEvent } from "../openai-translator/dist/index.js";
 // @ts-ignore
 import { getConfigValue, setConfigValue } from "../core/dist/index.js";
-import { resolveEndpoint, readEndpoints, advertisedModels, splitModel, writeDynamicManifest, migrateLegacyKeys } from "./endpoints.js";
-import { HandleIrError } from "./errors.js";
+import { toSettingsGroups, type ProviderSettingsSchema } from "../core-auth/dist/index.js";
+import { resolveEndpoint, readEndpoints, advertisedModels, splitModel, writeDynamicManifest, migrateLegacyKeys, accountsFor } from "./endpoints.js";
+import { HandleIrError, handleIrErrorFromResponse } from "./errors.js";
 
 type HandlerCtx = { configDir: string; log: (m: string) => void; model: string; provider?: string };
 type HandleIrDeps = { fetch?: typeof fetch };
@@ -30,13 +31,7 @@ export async function handleIr(ir: IrRequest, ctx: HandlerCtx, deps: HandleIrDep
 
   if (!response.ok) {
     const body = await response.text();
-    const retryAfter = response.headers.get("retry-after");
-    throw new HandleIrError({
-      status: response.status,
-      headers: Object.fromEntries(response.headers.entries()),
-      body,
-      retryAfterMs: retryAfter ? Number(retryAfter) * 1000 : undefined,
-    });
+    throw handleIrErrorFromResponse(response, body);
   }
 
   if (ir.stream) {
@@ -62,6 +57,12 @@ function buildModels(): Record<string, { name: string }> {
 // doesn't fit the flat bool/enum/number/string fields the settings editor otherwise supports.
 // The API key is never part of this: it lives in core-auth's account store (see saveKey/keyFor
 // in endpoints.ts), reachable only through the Accounts menu, not Settings.
+export const CUSTOM_SETTINGS_SCHEMA: ProviderSettingsSchema = [
+  { title: "Endpoints", fields: [
+    { key: "endpoints", label: "Endpoints (JSON)", type: "multiline", hint: "JSON array of {id,label,baseUrl,format,models[]}. API keys are configured in Accounts, never here." },
+  ] },
+];
+
 function getSetting(key: string): unknown {
   if (key === "endpoints") return JSON.stringify(getConfigValue("custom-auth", "endpoints") ?? []);
   return getConfigValue("custom-auth", key);
@@ -78,7 +79,7 @@ function setSetting(key: string, value: unknown): void {
 // each endpoint appears as a real provider rather than a namespaced model on a single "custom"
 // provider. Returns [] when no endpoints are configured. Never throws: enumeration must stay
 // cheap and safe (a config read + a best-effort key migration).
-export function resolveProviders(): Array<{ id: string; label: string; models: Record<string, { name: string }>; hasOAuth: false; accountPool: string }> {
+export function resolveProviders(): Array<{ id: string; label: string; models: Record<string, { name: string }>; hasOAuth: false; accountPool: string; accounts: ReturnType<typeof accountsFor> }> {
   try { migrateLegacyKeys(); } catch { /* best-effort */ }
   return readEndpoints().map((e) => ({
     id: e.id,
@@ -86,6 +87,7 @@ export function resolveProviders(): Array<{ id: string; label: string; models: R
     models: Object.fromEntries(e.models.map((m) => [m, { name: m }])),
     hasOAuth: false,
     accountPool: e.id,
+    accounts: accountsFor(e.id),
   }));
 }
 
@@ -95,11 +97,7 @@ export const driver = {
   models: buildModels(),
   handleIr,
   settings: {
-    groups: [
-      { title: "Endpoints", fields: [
-        { key: "endpoints", label: "Endpoints (JSON)", type: "string", hint: "JSON array of {id,label,baseUrl,format,models[]}. API keys are configured in Accounts, never here." },
-      ] },
-    ],
+    groups: toSettingsGroups(CUSTOM_SETTINGS_SCHEMA),
     get: getSetting,
     set: setSetting,
   },

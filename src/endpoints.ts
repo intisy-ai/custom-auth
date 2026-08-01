@@ -3,8 +3,8 @@ import { fileURLToPath } from "node:url";
 import { join } from "node:path";
 // core's build (tsc --noEmit + esbuild bundle) ships no declaration file for its dist.
 // @ts-ignore
-import { defineConfig } from "../core/dist/index.js";
-import { listAccounts, addAccount, removeAccount } from "../core-auth/dist/index.js";
+import { getConfigValue } from "../core/dist/index.js";
+import { AccountManager, accountControllerFromManager, addAccount, removeAccount } from "../core-auth/dist/index.js";
 import { HandleIrError } from "./errors.js";
 
 export type Endpoint = { id: string; label: string; baseUrl: string; format: string; models: string[] };
@@ -17,9 +17,26 @@ type StoredAccount = { id?: string; enabled?: boolean; refresh?: string; meta?: 
 // migrateLegacyKeys moves them across.
 const LEGACY_POOL = "custom";
 
+// defineConfig registration happens once, in index.ts's prologue (before the config-CLI guard);
+// this only reads the already-registered config, so it works standalone (e.g. from tests that
+// never import index.ts) and doesn't re-declare the schema on every call.
 export function readEndpoints(): Endpoint[] {
-  const cfg = defineConfig("custom-auth", { endpoints: [] }) as { endpoints?: Endpoint[] };
-  return Array.isArray(cfg.endpoints) ? cfg.endpoints : [];
+  const endpoints = getConfigValue("custom-auth", "endpoints");
+  return Array.isArray(endpoints) ? (endpoints as Endpoint[]) : [];
+}
+
+// Reads a pool through core-auth's AccountManager (the same shared engine every other
+// provider's account pool goes through), instead of a raw store read, so an endpoint's keys
+// participate in the same account machinery as any other provider's accounts.
+function poolAccounts(providerId: string): StoredAccount[] {
+  return new AccountManager(providerId, {}).list() as StoredAccount[];
+}
+
+// Standard account-controller surface (list/enable/remove) for one endpoint's key pool, so it
+// is visible through the same accounts UI as every other provider's pool instead of being
+// invisible. No login: keys are entered directly via saveKey, there is no OAuth flow to drive.
+export function accountsFor(endpointId: string) {
+  return accountControllerFromManager(new AccountManager(endpointId, {}), {});
 }
 
 export function splitModel(model: string): { endpointId: string; upstreamModel: string } {
@@ -29,9 +46,9 @@ export function splitModel(model: string): { endpointId: string; upstreamModel: 
 }
 
 export function keyFor(endpointId: string): string {
-  const own = (listAccounts(endpointId, undefined) as StoredAccount[]).find((a) => a.enabled !== false && a.refresh);
+  const own = poolAccounts(endpointId).find((a) => a.enabled !== false && a.refresh);
   if (own?.refresh) return own.refresh;
-  const legacy = (listAccounts(LEGACY_POOL, undefined) as StoredAccount[]).find((a) => a.enabled !== false && a.refresh && a.meta?.endpointId === endpointId);
+  const legacy = poolAccounts(LEGACY_POOL).find((a) => a.enabled !== false && a.refresh && a.meta?.endpointId === endpointId);
   if (legacy?.refresh) return legacy.refresh;
   throw new HandleIrError({ status: 401, body: "custom-auth: no API key configured for endpoint " + endpointId });
 }
@@ -85,11 +102,11 @@ export function writeDynamicManifest(repoDir: string = defaultRepoDir()): void {
 // Moves any pre-split keys from the shared "custom" pool into their own per-endpoint pool.
 // Idempotent and best-effort: a key already present under its endpoint pool is left in place.
 export function migrateLegacyKeys(): void {
-  const legacy = listAccounts(LEGACY_POOL, undefined) as StoredAccount[];
+  const legacy = poolAccounts(LEGACY_POOL);
   for (const account of legacy) {
     const endpointId = account.meta?.endpointId;
     if (!endpointId || !account.refresh) continue;
-    const alreadyMoved = (listAccounts(endpointId, undefined) as StoredAccount[]).some((a) => a.refresh === account.refresh);
+    const alreadyMoved = poolAccounts(endpointId).some((a) => a.refresh === account.refresh);
     if (!alreadyMoved) addAccount(endpointId, { ...account, id: endpointId }, undefined);
     if (account.id) removeAccount(LEGACY_POOL, account.id, undefined);
   }
