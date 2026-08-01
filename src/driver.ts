@@ -2,8 +2,9 @@ import { openaiTranslator, type IrRequest, type IrResponse, type IrStreamEvent }
 // @ts-ignore
 import { getConfigValue, setConfigValue } from "../core/dist/index.js";
 import { toSettingsGroups, type ProviderSettingsSchema } from "../core-auth/dist/index.js";
-import { resolveEndpoint, readEndpoints, advertisedModels, splitModel, writeDynamicManifest, migrateLegacyKeys, accountsFor } from "./endpoints.js";
+import { resolveEndpoint, readEndpoints, advertisedModels, splitModel, writeDynamicManifest, migrateLegacyKeys, accountsFor, keyFor } from "./endpoints.js";
 import { HandleIrError, handleIrErrorFromResponse } from "./errors.js";
+import { javaHandleEnabled, prepareRequestViaJava, decodeResponseViaJava } from "./javaHandle.js";
 
 type HandlerCtx = { configDir: string; log: (m: string) => void; model: string; provider?: string };
 type HandleIrDeps = { fetch?: typeof fetch };
@@ -14,8 +15,35 @@ export { HandleIrError };
 // fast with a 400 rather than silently mis-encoding.
 const TRANSLATORS: Record<string, typeof openaiTranslator> = { openai: openaiTranslator };
 
-export async function handleIr(ir: IrRequest, ctx: HandlerCtx, deps: HandleIrDeps = {}): Promise<IrResponse | ReadableStream<IrStreamEvent>> {
-  const doFetch = deps.fetch ?? fetch;
+// The Java-delegated path (java/custom's CustomEndpointResolver + CustomHandleIr, reusing
+// openai-translator's Java for encode/decode): resolve + encode + decode run through the
+// TeaVM-compiled bundle, host I/O (the fetch) and the API key lookup stay here. Dormant unless
+// HUB_CUSTOM_AUTH_JAVA_HANDLE=1; handleIrViaTs below is the unconditional default.
+async function handleIrViaJava(ir: IrRequest, ctx: HandlerCtx, doFetch: typeof fetch): Promise<IrResponse | ReadableStream<IrStreamEvent>> {
+  const prepared = await prepareRequestViaJava(readEndpoints(), ir, ctx?.provider);
+  const apiKey = keyFor(prepared.endpointId);
+  const url = prepared.endpoint.baseUrl.replace(/\/$/, "") + "/chat/completions";
+  const response = await doFetch(url, {
+    method: "POST",
+    headers: { "content-type": "application/json", Authorization: "Bearer " + apiKey },
+    body: prepared.wireBody,
+  });
+
+  if (!response.ok) {
+    const body = await response.text();
+    throw handleIrErrorFromResponse(response, body);
+  }
+
+  if (ir.stream) {
+    if (!response.body) throw new HandleIrError({ status: 502, body: "custom-auth: upstream returned no body for a streamed request" });
+    // Streaming decode is not ported to java/custom yet; openaiTranslator's own decodeStream is
+    // already Java-backed (openai-translator's TeaVM bundle) independently of this module.
+    return response.body.pipeThrough(await openaiTranslator.decodeStream());
+  }
+  return decodeResponseViaJava(await response.text()) as Promise<IrResponse>;
+}
+
+async function handleIrViaTs(ir: IrRequest, ctx: HandlerCtx, doFetch: typeof fetch): Promise<IrResponse | ReadableStream<IrStreamEvent>> {
   const { upstreamModel, endpoint, apiKey } = resolveEndpoint(ir.model, ctx?.provider);
   const translator = TRANSLATORS[endpoint.format];
   if (!translator) throw new HandleIrError({ status: 400, body: "custom-auth: unsupported wire format " + endpoint.format });
@@ -39,6 +67,11 @@ export async function handleIr(ir: IrRequest, ctx: HandlerCtx, deps: HandleIrDep
     return response.body.pipeThrough(await translator.decodeStream());
   }
   return translator.decodeResponse(await response.text());
+}
+
+export async function handleIr(ir: IrRequest, ctx: HandlerCtx, deps: HandleIrDeps = {}): Promise<IrResponse | ReadableStream<IrStreamEvent>> {
+  const doFetch = deps.fetch ?? fetch;
+  return javaHandleEnabled() ? handleIrViaJava(ir, ctx, doFetch) : handleIrViaTs(ir, ctx, doFetch);
 }
 
 // Namespaced advertised models (`<endpointId>/<model>`) as the ProviderModel record

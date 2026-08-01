@@ -1,0 +1,38 @@
+import org.teavm.gradle.api.JSModuleType
+import org.teavm.gradle.api.OptimizationLevel
+
+plugins {
+    id "org.teavm" version "0.15.0"
+}
+
+dependencies {
+    // teavm transpiles :ir's + :openai's + :custom's pure types -- no gson/net/nio/etc, matching
+    // their own zero-dependency policy.
+    implementation project(":ir")
+    implementation project(":openai")
+    implementation project(":custom")
+    teavm teavm.libs.jsoApis
+}
+
+// The root subprojects{} block pins Java 8 (sourceCompatibility/targetCompatibility +
+// compileJava --release 8) for portability of :ir/:openai/:custom. TeaVM 0.15.0's own classlib/
+// jso-apis/extension-spi artifacts publish a minimum JVM-version metadata of 11-17, so
+// :teavm-custom needs a newer compile target -- override both the extension's compatibility
+// (fixes Gradle's dependency-resolution JVM-version attribute matching) and the compileJava
+// task's --release option. Mirrors openai-translator's teavm-openai/build.gradle exactly.
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+tasks.named("compileJava") {
+    options.release = 17
+}
+
+teavm.js {
+    mainClass = "io.github.intisy.ai.js.CustomProviderJs"
+    moduleType = JSModuleType.ES2015
+    obfuscated = false
+    optimization = OptimizationLevel.NONE
+    targetFileName = "custom-provider.js"
+}

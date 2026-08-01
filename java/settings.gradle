@@ -1,0 +1,18 @@
+rootProject.name = "custom-auth-java"
+
+// :ir is core-ir's neutral IR module, reached via the nested core-ir submodule (path re-declared
+// here, the ecosystem convention: Gradle settings do not nest, so every consumer re-declares it).
+include ":ir"
+project(":ir").projectDir = file("../core-ir/java/ir")
+
+// :openai is the OpenAI translator + codecs, reached via the nested openai-translator submodule,
+// re-declared the same way :ir is above. :custom reuses OpenaiTranslator's encode/decode rather
+// than re-implementing OpenAI wire translation.
+include ":openai"
+project(":openai").projectDir = file("../openai-translator/java/openai")
+
+// :custom       - endpoint resolution (mirrors src/endpoints.ts resolveEndpoint) + the handleIr
+//                 composition (resolve, encode via :openai, decode via :openai).
+// :teavm-custom - TeaVM JS export surface over :custom + :openai + :ir.
+include ":custom"
+include ":teavm-custom"

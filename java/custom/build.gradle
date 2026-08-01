@@ -1,0 +1,8 @@
+// Endpoint resolution + handleIr composition. Zero-dependency beyond :ir/:openai (TeaVM-clean:
+// no java.net/nio/reflection/threads), so :teavm-custom can transpile this module verbatim.
+dependencies {
+    compileOnly project(":ir")
+    testImplementation project(":ir")
+
+    implementation project(":openai")
+}

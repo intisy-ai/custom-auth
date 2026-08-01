@@ -2,3 +2,5 @@ node_modules/
 /dist/
 docs/
 .superpowers/
+# TeaVM-compiled java/custom export staged by core/teavm-build.mjs at build time -- never committed.
+src/generated/
