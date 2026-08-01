@@ -5,7 +5,7 @@ import java.util.List;
 /**
  * Resolves the endpoint to serve for a request, mirroring {@code src/endpoints.ts}'s
  * {@code resolveEndpoint}/{@code splitModel}. The resolved provider id names the endpoint directly
- * (the Phase-4 per-endpoint provider); a namespaced {@code <endpointId>/<model>} is the back-compat
+ * (a per-endpoint provider); a namespaced {@code <endpointId>/<model>} is the back-compat
  * fallback used when no provider id is supplied, or when the supplied provider id names no
  * configured endpoint. The API key is resolved by the host (core-auth's AccountManager) and is not
  * this class's concern.
