@@ -4,6 +4,12 @@ import { defineProviderPlugin, toCapabilitiesFields } from "../core-auth/dist/in
 import { defineConfig, defineCapabilities, defineReadme, maybeRunReadmeCli, deployCommands, maybeRunConfigCli } from "../core/dist/index.js";
 import { driver, CUSTOM_SETTINGS_SCHEMA } from "./driver.js";
 import { writeDynamicManifest } from "./endpoints.js";
+import { serveDirect } from "../opencode-proxy/dist/index.js";
+
+// custom builds per-endpoint providers dynamically, but the OpenCode loader.fetch path
+// uses this one driver; wiring serveDirect here covers every custom endpoint's offline
+// OpenCode serving.
+driver.serveDirect = serveDirect;
 
 // Materialize the per-endpoint provider manifest for the proxy scan, so endpoints configured
 // before this build (or on a fresh deploy) become routable without waiting for a re-save. Gated
