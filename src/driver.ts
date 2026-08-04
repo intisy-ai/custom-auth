@@ -1,10 +1,16 @@
 import { openaiTranslator, type IrRequest, type IrResponse, type IrStreamEvent } from "../openai-translator/dist/index.js";
 // @ts-ignore
-import { getConfigValue, setConfigValue } from "../core/dist/index.js";
-import { toSettingsGroups, type ProviderSettingsSchema } from "../core-auth/dist/index.js";
+import { getConfigValue, setConfigValue, emitEvent } from "../core/dist/index.js";
+import { toSettingsGroups, setActivityEmitter, type ProviderSettingsSchema } from "../core-auth/dist/index.js";
 import { resolveEndpoint, readEndpoints, advertisedModels, splitModel, writeDynamicManifest, migrateLegacyKeys, accountsFor, keyFor } from "./endpoints.js";
 import { HandleIrError, handleIrErrorFromResponse } from "./errors.js";
 import { javaHandleEnabled, prepareRequestViaJava, decodeResponseViaJava } from "./javaHandle.js";
+
+// endpoints.ts routes its per-endpoint key pools through core-auth's AccountManager
+// (addAccount/removeAccount), which can emit account activity. dist/driver.js is its own
+// esbuild bundle with its own copy of core-auth's module-level emitter, separate from
+// dist/index.js and dist/handler.js, so it needs the same one-time wiring.
+setActivityEmitter((spec: unknown, source: string) => emitEvent(spec, source));
 
 type HandlerCtx = { configDir: string; log: (m: string) => void; model: string; provider?: string };
 type HandleIrDeps = { fetch?: typeof fetch };
