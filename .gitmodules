@@ -10,6 +10,3 @@
 [submodule "core-ir"]
 	path = core-ir
 	url = https://github.com/intisy-ai/core-ir.git
-[submodule "opencode-proxy"]
-	path = opencode-proxy
-	url = https://github.com/intisy-ai/opencode-proxy.git
