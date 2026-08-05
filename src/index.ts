@@ -1,7 +1,7 @@
-import { defineProviderPlugin, toCapabilitiesFields } from "../core-auth/dist/index.js";
+import { defineProviderPlugin, toCapabilitiesFields, setActivityEmitter } from "../core-auth/dist/index.js";
 // core's build (tsc --noEmit + esbuild bundle) ships no declaration file for its dist.
 // @ts-ignore
-import { defineConfig, defineCapabilities, defineReadme, maybeRunReadmeCli, deployCommands, maybeRunConfigCli } from "../core/dist/index.js";
+import { defineConfig, defineCapabilities, defineReadme, maybeRunReadmeCli, deployCommands, maybeRunConfigCli, emitEvent } from "../core/dist/index.js";
 import { driver, CUSTOM_SETTINGS_SCHEMA } from "./driver.js";
 import { writeDynamicManifest } from "./endpoints.js";
 
@@ -9,6 +9,9 @@ import { writeDynamicManifest } from "./endpoints.js";
 // before this build (or on a fresh deploy) become routable without waiting for a re-save. Gated
 // to the deployed bundle so unit tests importing this module never write into the source tree.
 if (import.meta.url.includes("/dist/")) { try { writeDynamicManifest(); } catch { /* best-effort */ } }
+
+// Best-effort: let core-auth's account activity (added/removed/login/rate_limited/models_refreshed) flow onto the bus.
+setActivityEmitter((spec: unknown, source: string) => emitEvent(spec, source));
 
 export const CustomProvider = await defineProviderPlugin({
   name: "custom-auth",
