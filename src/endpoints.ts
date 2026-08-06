@@ -3,11 +3,17 @@ import { fileURLToPath } from "node:url";
 import { join } from "node:path";
 // core's build (tsc --noEmit + esbuild bundle) ships no declaration file for its dist.
 // @ts-ignore
-import { getConfigValue } from "../core/dist/index.js";
+import { getConfigValue, setConfigValue } from "../core/dist/index.js";
 import { AccountManager, accountControllerFromManager, addAccount, removeAccount } from "../core-auth/dist/index.js";
 import { HandleIrError } from "./errors.js";
 
 export type Endpoint = { id: string; label: string; baseUrl: string; format: string; models: string[] };
+
+// The wire formats an endpoint can speak. This plugin translates them, so it is the only
+// thing that knows which exist; a host asks rather than keeping its own copy.
+export const SUPPORTED_FORMATS = ["openai"] as const;
+
+const ID_PATTERN = /^[A-Za-z0-9._-]+$/;
 
 type StoredAccount = { id?: string; enabled?: boolean; refresh?: string; meta?: { endpointId?: string } };
 
@@ -23,6 +29,57 @@ const LEGACY_POOL = "custom";
 export function readEndpoints(): Endpoint[] {
   const endpoints = getConfigValue("custom-auth", "endpoints");
   return Array.isArray(endpoints) ? (endpoints as Endpoint[]) : [];
+}
+
+// The one rule set for what makes an endpoint usable, applied wherever an endpoint is added:
+// the dashboard's editor, a loader's Providers view, or anything added later. Returns the
+// reason it would not work, or null.
+export function validateEndpoint(endpoint: Partial<Endpoint>, opts: { existing?: Endpoint[]; rejectDuplicate?: boolean } = {}): string | null {
+  const id = (endpoint.id || "").trim();
+  if (!id) return "endpoint id is required";
+  if (!ID_PATTERN.test(id)) return "endpoint id may only use letters, numbers, dot, dash and underscore";
+  if (opts.rejectDuplicate && (opts.existing ?? readEndpoints()).some((e) => e.id === id)) {
+    return `there is already an endpoint called ${id}`;
+  }
+  if (!(endpoint.label || "").trim()) return "label is required";
+  const baseUrl = (endpoint.baseUrl || "").trim();
+  if (!baseUrl) return "base URL is required";
+  try {
+    const parsed = new URL(baseUrl);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return "base URL must be http or https";
+  } catch {
+    return "base URL is not a valid URL";
+  }
+  if (!(SUPPORTED_FORMATS as readonly string[]).includes(endpoint.format || "")) return "unsupported wire format: " + endpoint.format;
+  // An endpoint with no models advertises nothing, so it is a provider that can never serve.
+  if (!Array.isArray(endpoint.models) || endpoint.models.length === 0) return "at least one model id is required";
+  return null;
+}
+
+// Adds or replaces an endpoint and makes it routable in one step: validate, store, then
+// re-materialise the manifest the provider scan reads. A host calls this instead of writing
+// the config itself, so every route in has the same rules and the same follow-through.
+export function upsertEndpoint(endpoint: Endpoint, repoDir?: string): void {
+  const endpoints = readEndpoints();
+  const problem = validateEndpoint(endpoint, { existing: endpoints });
+  if (problem) throw new Error(problem);
+  const index = endpoints.findIndex((e) => e.id === endpoint.id);
+  const next = endpoints.slice();
+  if (index >= 0) next[index] = endpoint;
+  else next.push(endpoint);
+  setConfigValue("custom-auth", "endpoints", next);
+  writeDynamicManifest(repoDir);
+}
+
+export function removeEndpoint(id: string, repoDir?: string): void {
+  setConfigValue("custom-auth", "endpoints", readEndpoints().filter((e) => e.id !== id));
+  removeAccount(id, id, undefined);
+  writeDynamicManifest(repoDir);
+}
+
+// Each endpoint with whether a key has been entered for it, which is what a host lists.
+export function endpointViews(): Array<Endpoint & { hasKey: boolean }> {
+  return readEndpoints().map((e) => ({ ...e, hasKey: !!keyFor(e.id) }));
 }
 
 // Reads a pool through core-auth's AccountManager (the same shared engine every other
