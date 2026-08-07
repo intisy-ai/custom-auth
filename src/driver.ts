@@ -1,4 +1,4 @@
-import { openaiTranslator, type IrRequest, type IrResponse, type IrStreamEvent } from "../openai-translator/dist/index.js";
+import { openaiTranslator, type IrRequest, type IrResponse, type IrStreamEvent } from "@intisy-ai/openai-translator";
 // @ts-ignore
 import { getConfigValue, setConfigValue, emitEvent } from "@intisy-ai/core";
 import { toSettingsGroups, setActivityEmitter, type ProviderSettingsSchema } from "@intisy-ai/core-auth";
