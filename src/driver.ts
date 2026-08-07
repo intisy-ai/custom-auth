@@ -1,7 +1,7 @@
-import { openaiTranslator, type IrRequest, type IrResponse, type IrStreamEvent } from "../openai-translator/dist/index.js";
+import { openaiTranslator, type IrRequest, type IrResponse, type IrStreamEvent } from "@intisy-ai/openai-translator";
 // @ts-ignore
-import { getConfigValue, setConfigValue, emitEvent } from "../core/dist/index.js";
-import { toSettingsGroups, setActivityEmitter, type ProviderSettingsSchema } from "../core-auth/dist/index.js";
+import { getConfigValue, setConfigValue, emitEvent } from "@intisy-ai/core";
+import { toSettingsGroups, setActivityEmitter, type ProviderSettingsSchema } from "@intisy-ai/core-auth";
 import { resolveEndpoint, readEndpoints, advertisedModels, splitModel, writeDynamicManifest, migrateLegacyKeys, accountsFor, keyFor } from "./endpoints.js";
 import { HandleIrError, handleIrErrorFromResponse } from "./errors.js";
 import { javaHandleEnabled, prepareRequestViaJava, decodeResponseViaJava } from "./javaHandle.js";

@@ -11,7 +11,7 @@
 // already reaches openai-translator's own Java independently); only the non-streaming request
 // prepare + response decode are delegated here.
 
-import { lazyModule } from "../core-auth/dist/index.js";
+import { lazyModule } from "@intisy-ai/core-auth";
 import { HandleIrError } from "./errors.js";
 
 export function javaHandleEnabled() {

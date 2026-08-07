@@ -2,7 +2,7 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { openaiTranslator } from "../../openai-translator/dist/index.js";
+import { openaiTranslator } from "@intisy-ai/openai-translator";
 
 // Frozen fixture: byte-identical to java/custom's CustomHandleIrTest.EXPECTED_WIRE_BODY. Both
 // sides encode the SAME IrRequest shape through openai-translator's Java (openaiTranslator here

@@ -1,6 +1,6 @@
-import { providerHandlerExports, setActivityEmitter } from "../core-auth/dist/index.js";
+import { providerHandlerExports, setActivityEmitter } from "@intisy-ai/core-auth";
 // @ts-ignore
-import { emitEvent } from "../core/dist/index.js";
+import { emitEvent } from "@intisy-ai/core";
 import { driver } from "./driver.js";
 
 // This bundle (dist/handler.js) is loaded independently of dist/index.js (the Claude proxy
