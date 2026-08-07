@@ -1,1 +1,1 @@
-export { HandleIrError, handleIrErrorFromResponse } from "../core-auth/dist/index.js";
+export { HandleIrError, handleIrErrorFromResponse } from "@intisy-ai/core-auth";

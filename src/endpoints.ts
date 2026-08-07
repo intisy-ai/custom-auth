@@ -3,8 +3,8 @@ import { fileURLToPath } from "node:url";
 import { join } from "node:path";
 // core's build (tsc --noEmit + esbuild bundle) ships no declaration file for its dist.
 // @ts-ignore
-import { getConfigValue, setConfigValue } from "../core/dist/index.js";
-import { AccountManager, accountControllerFromManager, addAccount, removeAccount } from "../core-auth/dist/index.js";
+import { getConfigValue, setConfigValue } from "@intisy-ai/core";
+import { AccountManager, accountControllerFromManager, addAccount, removeAccount } from "@intisy-ai/core-auth";
 import { HandleIrError } from "./errors.js";
 
 export type Endpoint = { id: string; label: string; baseUrl: string; format: string; models: string[] };

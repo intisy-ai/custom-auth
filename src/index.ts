@@ -1,7 +1,7 @@
-import { defineProviderPlugin, toCapabilitiesFields, setActivityEmitter } from "../core-auth/dist/index.js";
+import { defineProviderPlugin, toCapabilitiesFields, setActivityEmitter } from "@intisy-ai/core-auth";
 // core's build (tsc --noEmit + esbuild bundle) ships no declaration file for its dist.
 // @ts-ignore
-import { defineConfig, defineCapabilities, defineReadme, maybeRunReadmeCli, deployCommands, maybeRunConfigCli, emitEvent } from "../core/dist/index.js";
+import { defineConfig, defineCapabilities, defineReadme, maybeRunReadmeCli, deployCommands, maybeRunConfigCli, emitEvent } from "@intisy-ai/core";
 import { driver, CUSTOM_SETTINGS_SCHEMA } from "./driver.js";
 import { writeDynamicManifest } from "./endpoints.js";
 
