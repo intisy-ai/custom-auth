@@ -1,15 +1,15 @@
 rootProject.name = "custom-auth-java"
 
+apply from: file("../core/gradle/submodule-modules.gradle")
+
 // :ir is core-ir's neutral IR module, reached via the nested core-ir submodule (path re-declared
 // here, the ecosystem convention: Gradle settings do not nest, so every consumer re-declares it).
-include ":ir"
-project(":ir").projectDir = file("../core-ir/java/ir")
+includeFromSubmodule ":ir", "core-ir"
 
 // :openai is the OpenAI translator + codecs, reached via the nested openai-translator submodule,
 // re-declared the same way :ir is above. :custom reuses OpenaiTranslator's encode/decode rather
 // than re-implementing OpenAI wire translation.
-include ":openai"
-project(":openai").projectDir = file("../openai-translator/java/openai")
+includeFromSubmodule ":openai", "openai-translator"
 
 // :custom       - endpoint resolution (mirrors src/endpoints.ts resolveEndpoint) + the handleIr
 //                 composition (resolve, encode via :openai, decode via :openai).
