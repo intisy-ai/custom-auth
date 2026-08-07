@@ -15,3 +15,20 @@ export const { handleIr, def } = providerHandlerExports(driver);
 // Each configured endpoint is a first-class provider; Cairn and the loader enumerate these via
 // loadProviderDefs, and the proxy serves them from the materialized .dynamic-providers.json.
 export { resolveProviders } from "./driver.js";
+// What a host needs to add an endpoint of its own: store its key, and re-materialise the
+// manifest so the new endpoint is routable straight away. A loader has no business holding
+// either, so it asks this bundle instead.
+// Everything a host needs to manage endpoints, so neither the dashboard nor a loader keeps a
+// second copy of the rules: what formats exist, whether an endpoint would work, adding and
+// removing one (each re-materialising the manifest that makes it routable), listing them with
+// their key state, and storing a key.
+export {
+  SUPPORTED_FORMATS,
+  validateEndpoint,
+  upsertEndpoint,
+  removeEndpoint,
+  endpointViews,
+  readEndpoints,
+  saveKey,
+  writeDynamicManifest,
+} from "./endpoints.js";
