@@ -27,7 +27,7 @@
     "node": ">=20.0.0"
   },
   "scripts": {
-    "build:deps": "npm --prefix core install && npm --prefix core run build && npm --prefix core-ir install && npm --prefix core-ir run build && npm --prefix openai-translator install && npm --prefix openai-translator run build && node core/teavm-build.mjs --java-dir java --module :teavm-custom --out src/generated/custom-provider.teavm.js && npm --prefix core-auth run build:teavm && npx tsc --project core-auth/tsconfig.json && node core-auth/copy-generated.mjs --root core-auth",
+    "build:deps": "npm --prefix core install && npm --prefix core run build && npm --prefix core-ir install && npm --prefix core-ir run build && npm --prefix openai-translator install && npm --prefix openai-translator run build && node core/teavm-build.mjs --java-dir java --module :teavm-custom --out src/generated/custom-provider.teavm.js && npm --prefix core-auth install && npm --prefix core-auth run build",
     "build": "npm run build:deps && npx esbuild src/index.ts --bundle --platform=node --format=esm --external:@intisy-ai/core --external:@intisy-ai/core-auth --external:@intisy-ai/openai-translator --external:sync-bridge --outfile=dist/index.js && npx esbuild src/handler.ts --bundle --platform=node --format=esm --external:@intisy-ai/core --external:@intisy-ai/core-auth --external:@intisy-ai/openai-translator --external:sync-bridge --outfile=dist/handler.js && npx esbuild src/driver.ts --bundle --platform=node --format=esm --external:@intisy-ai/core --external:@intisy-ai/core-auth --external:@intisy-ai/openai-translator --external:sync-bridge --outfile=dist/driver.js",
     "test": "vitest run",
     "prepublishOnly": "npm run build"
