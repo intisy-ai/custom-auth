@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { installTranslator } from "./installTranslator.js";
 
 const ENDPOINTS = [
   { id: "local", label: "Local", baseUrl: "https://ep.test/v1", format: "openai", models: ["gpt-4o", "gpt-4o-mini"] },
@@ -15,6 +16,7 @@ function seedHome(accounts: Record<string, unknown> = {}): string {
   writeFileSync(join(cfg, "custom-auth.json"), JSON.stringify({ endpoints: ENDPOINTS }));
   writeFileSync(join(cfg, "accounts.json"), JSON.stringify({ version: 1, providers: accounts }));
   process.env.HUB_CONFIG_DIR = home;
+  installTranslator(home);
   return home;
 }
 

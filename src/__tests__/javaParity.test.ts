@@ -2,6 +2,7 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { installTranslator } from "./installTranslator.js";
 import { openaiTranslator } from "@intisy-ai/openai-translator";
 
 // Frozen fixture: byte-identical to java/custom's CustomHandleIrTest.EXPECTED_WIRE_BODY. Both
@@ -30,6 +31,7 @@ function seedHome(): string {
   mkdirSync(cfg, { recursive: true });
   writeFileSync(join(cfg, "custom-auth.json"), JSON.stringify({ endpoints: [{ id: "local", label: "Local", baseUrl: "https://ep.test/v1", format: "openai", models: ["gpt-4o"] }] }));
   writeFileSync(join(cfg, "accounts.json"), JSON.stringify({ version: 1, providers: { custom: { accounts: [{ id: "local", refresh: "sk-test-key", enabled: true, meta: { endpointId: "local" } }], activeIndex: 0, activeIndexByLane: {} } } }));
+  installTranslator(home);
   return home;
 }
 

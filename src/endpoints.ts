@@ -14,11 +14,11 @@ export { supportedFormats };
 
 export type Endpoint = { id: string; label: string; baseUrl: string; format: string; models: string[] };
 
-// The wire format this plugin vendors a translator for. It is the FLOOR, not the list:
-// supportedFormats() adds every translator installed into the home's shared store, so a
-// vendor published later needs no change here. Kept exported for hosts that predate the
-// async call.
-export const SUPPORTED_FORMATS = ["openai"] as const;
+// This plugin vendors no translator, so it speaks nothing on its own: supportedFormats()
+// answers with whatever is installed in the home's shared store. Kept exported, and empty,
+// for hosts that predate the async call, since claiming a format no translator provides is
+// how an endpoint came to be accepted and then fail at request time.
+export const SUPPORTED_FORMATS: readonly string[] = [];
 
 const ID_PATTERN = /^[A-Za-z0-9._-]+$/;
 

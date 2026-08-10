@@ -1,18 +1,19 @@
 import { existsSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
-import { openaiTranslator } from "@intisy-ai/openai-translator";
+import type { IrRequest, IrResponse, IrStreamEvent } from "@intisy-ai/core-ir";
 
-// A translator speaks one vendor's wire format. Only the encode/decode surface is used here,
-// so anything exporting it can be registered without this plugin knowing the vendor.
-export type WireTranslator = typeof openaiTranslator;
+// A translator speaks one vendor's wire format. Described structurally rather than as the type
+// of a particular translator: this plugin vendors none, so no vendor is more canonical here
+// than any other.
+export interface WireTranslator {
+  encodeRequest: (request: IrRequest) => Promise<string> | string;
+  decodeResponse: (body: string) => Promise<IrResponse> | IrResponse;
+  decodeStream: () => Promise<TransformStream<Uint8Array, IrStreamEvent>>;
+}
 
 const SCOPE = "@intisy-ai";
 const SUFFIX = "-translator";
-
-// The translator this plugin vendors as a submodule. It is the floor, not the list: a home
-// with no shared store still speaks OpenAI, and everything found there adds to it.
-const BUNDLED: Record<string, WireTranslator> = { openai: openaiTranslator };
 
 let cache: { dir: string; translators: Record<string, WireTranslator> } | null = null;
 
@@ -43,21 +44,20 @@ function translatorFrom(module: Record<string, unknown>): WireTranslator | null 
   return null;
 }
 
-// Every translator installed into this home's shared library store, plus the bundled one.
-// Cairn installs a translator as an ordinary marketplace entry, and it lands in the same store
-// a provider resolves its libraries from, so discovery is a directory read rather than a
-// registry this plugin would have to keep in step.
+// Every translator installed into this home's shared library store. This plugin vendors none:
+// Cairn installs a translator as an ordinary marketplace entry, it lands in the same store a
+// provider resolves its libraries from, and discovery is a directory read rather than a
+// registry this plugin would have to keep in step. A home with none speaks no wire format
+// yet, which the host reports as "install a translator" rather than a broken endpoint.
 export async function loadTranslators(configDir: string): Promise<Record<string, WireTranslator>> {
   if (cache && cache.dir === configDir) return cache.translators;
 
-  const translators: Record<string, WireTranslator> = { ...BUNDLED };
+  const translators: Record<string, WireTranslator> = {};
   const store = join(configDir, "node_modules", SCOPE);
   if (existsSync(store)) {
     for (const entry of readdirSync(store, { withFileTypes: true })) {
       if (!entry.isDirectory()) continue;
       const format = formatOf(entry.name);
-      // The bundled copy is already loaded and is the same code; re-importing it would only
-      // create a second module instance.
       if (!format || translators[format]) continue;
       try {
         const module = (await import(pathToFileURL(join(store, entry.name, "dist", "index.js")).href)) as Record<string, unknown>;

@@ -2,12 +2,14 @@ import { describe, it, expect, vi } from "vitest";
 import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { installTranslator } from "./installTranslator.js";
 
 function seedHome(): string {
   const home = mkdtempSync(join(tmpdir(), "custom-auth-stream-"));
   const cfg = join(home, "config"); mkdirSync(cfg, { recursive: true });
   writeFileSync(join(cfg, "custom-auth.json"), JSON.stringify({ endpoints: [{ id: "local", label: "L", baseUrl: "https://ep.test/v1", format: "openai", models: ["gpt-4o"] }] }));
   writeFileSync(join(cfg, "accounts.json"), JSON.stringify({ version: 1, providers: { custom: { accounts: [{ id: "local", refresh: "sk", enabled: true, meta: { endpointId: "local" } }], activeIndex: 0, activeIndexByLane: {} } } }));
+  installTranslator(home);
   return home;
 }
 function sseBody(): ReadableStream<Uint8Array> {

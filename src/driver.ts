@@ -1,4 +1,4 @@
-import { type IrRequest, type IrResponse, type IrStreamEvent } from "@intisy-ai/openai-translator";
+import type { IrRequest, IrResponse, IrStreamEvent } from "@intisy-ai/core-ir";
 import { loadTranslators } from "./translators.js";
 // @ts-ignore
 import { getConfigValue, setConfigValue, emitEvent } from "@intisy-ai/core";
@@ -43,9 +43,11 @@ async function handleIrViaJava(ir: IrRequest, ctx: HandlerCtx, doFetch: typeof f
 
   if (ir.stream) {
     if (!response.body) throw new HandleIrError({ status: 502, body: "custom-auth: upstream returned no body for a streamed request" });
-    // Streaming decode is not ported to java/custom yet; openaiTranslator's own decodeStream is
-    // already Java-backed (openai-translator's TeaVM bundle) independently of this module.
-    return response.body.pipeThrough(await openaiTranslator.decodeStream());
+    // Streaming decode is not ported to java/custom yet, so it goes through the installed
+    // translator's own decodeStream, which is Java-backed independently of this module.
+    const streaming = (await loadTranslators(ctx.configDir))[prepared.endpoint.format];
+    if (!streaming) throw new HandleIrError({ status: 400, body: "custom-auth: no translator installed for wire format " + prepared.endpoint.format });
+    return response.body.pipeThrough(await streaming.decodeStream());
   }
   return decodeResponseViaJava(await response.text()) as Promise<IrResponse>;
 }

@@ -1,0 +1,12 @@
+{
+  "displayName": "Custom endpoints",
+  "marketplace": {
+    "categories": [
+      {
+        "id": "translators",
+        "label": "Translators",
+        "match": { "topics": ["vendor-translator"] }
+      }
+    ]
+  }
+}
