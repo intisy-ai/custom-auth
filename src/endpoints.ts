@@ -4,13 +4,20 @@ import { join } from "node:path";
 // core's build (tsc --noEmit + esbuild bundle) ships no declaration file for its dist.
 // @ts-ignore
 import { getConfigValue, setConfigValue } from "@intisy-ai/core";
-import { AccountManager, accountControllerFromManager, addAccount, removeAccount } from "@intisy-ai/core-auth";
+import { AccountManager, accountControllerFromManager, addAccount, removeAccount, getConfigDir } from "@intisy-ai/core-auth";
 import { HandleIrError } from "./errors.js";
+import { supportedFormats } from "./translators.js";
+
+// Re-exported so a host reaches every endpoint rule through one module, the way it already
+// does for validation and storage.
+export { supportedFormats };
 
 export type Endpoint = { id: string; label: string; baseUrl: string; format: string; models: string[] };
 
-// The wire formats an endpoint can speak. This plugin translates them, so it is the only
-// thing that knows which exist; a host asks rather than keeping its own copy.
+// The wire format this plugin vendors a translator for. It is the FLOOR, not the list:
+// supportedFormats() adds every translator installed into the home's shared store, so a
+// vendor published later needs no change here. Kept exported for hosts that predate the
+// async call.
 export const SUPPORTED_FORMATS = ["openai"] as const;
 
 const ID_PATTERN = /^[A-Za-z0-9._-]+$/;
@@ -34,7 +41,7 @@ export function readEndpoints(): Endpoint[] {
 // The one rule set for what makes an endpoint usable, applied wherever an endpoint is added:
 // the dashboard's editor, a loader's Providers view, or anything added later. Returns the
 // reason it would not work, or null.
-export function validateEndpoint(endpoint: Partial<Endpoint>, opts: { existing?: Endpoint[]; rejectDuplicate?: boolean } = {}): string | null {
+export function validateEndpoint(endpoint: Partial<Endpoint>, opts: { existing?: Endpoint[]; rejectDuplicate?: boolean; formats?: string[] } = {}): string | null {
   const id = (endpoint.id || "").trim();
   if (!id) return "endpoint id is required";
   if (!ID_PATTERN.test(id)) return "endpoint id may only use letters, numbers, dot, dash and underscore";
@@ -50,7 +57,8 @@ export function validateEndpoint(endpoint: Partial<Endpoint>, opts: { existing?:
   } catch {
     return "base URL is not a valid URL";
   }
-  if (!(SUPPORTED_FORMATS as readonly string[]).includes(endpoint.format || "")) return "unsupported wire format: " + endpoint.format;
+  const allowed = opts.formats ?? (SUPPORTED_FORMATS as readonly string[]);
+  if (!allowed.includes(endpoint.format || "")) return "unsupported wire format: " + endpoint.format;
   // An endpoint with no models advertises nothing, so it is a provider that can never serve.
   if (!Array.isArray(endpoint.models) || endpoint.models.length === 0) return "at least one model id is required";
   return null;
@@ -59,9 +67,11 @@ export function validateEndpoint(endpoint: Partial<Endpoint>, opts: { existing?:
 // Adds or replaces an endpoint and makes it routable in one step: validate, store, then
 // re-materialise the manifest the provider scan reads. A host calls this instead of writing
 // the config itself, so every route in has the same rules and the same follow-through.
-export function upsertEndpoint(endpoint: Endpoint, repoDir?: string): void {
+export async function upsertEndpoint(endpoint: Endpoint, repoDir?: string): Promise<void> {
   const endpoints = readEndpoints();
-  const problem = validateEndpoint(endpoint, { existing: endpoints });
+  // Asked rather than assumed: a format is valid when a translator for it is actually
+  // installed, which the bundled floor alone cannot answer.
+  const problem = validateEndpoint(endpoint, { existing: endpoints, formats: await supportedFormats(getConfigDir()) });
   if (problem) throw new Error(problem);
   const index = endpoints.findIndex((e) => e.id === endpoint.id);
   const next = endpoints.slice();

@@ -1,4 +1,5 @@
-import { openaiTranslator, type IrRequest, type IrResponse, type IrStreamEvent } from "@intisy-ai/openai-translator";
+import { type IrRequest, type IrResponse, type IrStreamEvent } from "@intisy-ai/openai-translator";
+import { loadTranslators } from "./translators.js";
 // @ts-ignore
 import { getConfigValue, setConfigValue, emitEvent } from "@intisy-ai/core";
 import { toSettingsGroups, setActivityEmitter, type ProviderSettingsSchema } from "@intisy-ai/core-auth";
@@ -17,9 +18,9 @@ type HandleIrDeps = { fetch?: typeof fetch };
 
 export { HandleIrError };
 
-// Wire format -> translator. Only "openai" is wired up so far; other formats fail
-// fast with a 400 rather than silently mis-encoding.
-const TRANSLATORS: Record<string, typeof openaiTranslator> = { openai: openaiTranslator };
+// Wire format -> translator, resolved from what is installed rather than a list here: the
+// bundled openai translator plus every one in this home's shared store. An endpoint naming a
+// format no installed translator speaks fails fast with a 400 rather than mis-encoding.
 
 // The Java-delegated path (java/custom's CustomEndpointResolver + CustomHandleIr, reusing
 // openai-translator's Java for encode/decode): resolve + encode + decode run through the
@@ -51,7 +52,7 @@ async function handleIrViaJava(ir: IrRequest, ctx: HandlerCtx, doFetch: typeof f
 
 async function handleIrViaTs(ir: IrRequest, ctx: HandlerCtx, doFetch: typeof fetch): Promise<IrResponse | ReadableStream<IrStreamEvent>> {
   const { upstreamModel, endpoint, apiKey } = resolveEndpoint(ir.model, ctx?.provider);
-  const translator = TRANSLATORS[endpoint.format];
+  const translator = (await loadTranslators(ctx.configDir))[endpoint.format];
   if (!translator) throw new HandleIrError({ status: 400, body: "custom-auth: unsupported wire format " + endpoint.format });
 
   const upstreamIr = { ...ir, model: upstreamModel };

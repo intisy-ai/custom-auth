@@ -24,6 +24,7 @@ export { resolveProviders } from "./driver.js";
 // their key state, and storing a key.
 export {
   SUPPORTED_FORMATS,
+  supportedFormats,
   validateEndpoint,
   upsertEndpoint,
   removeEndpoint,
