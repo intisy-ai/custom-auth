@@ -6,10 +6,9 @@ plugins {
 }
 
 dependencies {
-    // teavm transpiles :ir's + :openai's + :custom's pure types -- no gson/net/nio/etc, matching
+    // teavm transpiles :ir's + :custom's pure types -- no gson/net/nio/etc, matching
     // their own zero-dependency policy.
     implementation project(":ir")
-    implementation project(":openai")
     implementation project(":custom")
     teavm teavm.libs.jsoApis
 }

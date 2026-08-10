@@ -5,7 +5,7 @@ import { getConfigValue, setConfigValue, emitEvent } from "@intisy-ai/core";
 import { toSettingsGroups, setActivityEmitter, type ProviderSettingsSchema } from "@intisy-ai/core-auth";
 import { resolveEndpoint, readEndpoints, advertisedModels, splitModel, writeDynamicManifest, migrateLegacyKeys, accountsFor, keyFor } from "./endpoints.js";
 import { HandleIrError, handleIrErrorFromResponse } from "./errors.js";
-import { javaHandleEnabled, prepareRequestViaJava, decodeResponseViaJava } from "./javaHandle.js";
+import { javaHandleEnabled, resolveEndpointViaJava } from "./javaHandle.js";
 
 // endpoints.ts routes its per-endpoint key pools through core-auth's AccountManager
 // (addAccount/removeAccount), which can emit account activity. dist/driver.js is its own
@@ -23,17 +23,22 @@ export { HandleIrError };
 // format no installed translator speaks fails fast with a 400 rather than mis-encoding.
 
 // The Java-delegated path (java/custom's CustomEndpointResolver + CustomHandleIr, reusing
-// openai-translator's Java for encode/decode): resolve + encode + decode run through the
-// TeaVM-compiled bundle, host I/O (the fetch) and the API key lookup stay here. Dormant unless
-// HUB_CUSTOM_AUTH_JAVA_HANDLE=1; handleIrViaTs below is the unconditional default.
+// endpoint RESOLUTION only): which endpoint and upstream model a request maps to runs through the
+// TeaVM-compiled bundle, host I/O (the fetch), the API key lookup and translation stay here.
+// Translation cannot be delegated: the format is whichever translator is installed, so binding one
+// into the bundle would fix it at build time. Dormant unless HUB_CUSTOM_AUTH_JAVA_HANDLE=1;
+// handleIrViaTs below is the unconditional default.
 async function handleIrViaJava(ir: IrRequest, ctx: HandlerCtx, doFetch: typeof fetch): Promise<IrResponse | ReadableStream<IrStreamEvent>> {
-  const prepared = await prepareRequestViaJava(readEndpoints(), ir, ctx?.provider);
-  const apiKey = keyFor(prepared.endpointId);
-  const url = prepared.endpoint.baseUrl.replace(/\/$/, "") + "/chat/completions";
+  const resolved = await resolveEndpointViaJava(readEndpoints(), ir.model, ctx?.provider);
+  const translator = (await loadTranslators(ctx.configDir))[resolved.endpoint.format];
+  if (!translator) throw new HandleIrError({ status: 400, body: "custom-auth: no translator installed for wire format " + resolved.endpoint.format });
+
+  const apiKey = keyFor(resolved.endpointId);
+  const url = resolved.endpoint.baseUrl.replace(/\/$/, "") + "/chat/completions";
   const response = await doFetch(url, {
     method: "POST",
     headers: { "content-type": "application/json", Authorization: "Bearer " + apiKey },
-    body: prepared.wireBody,
+    body: await translator.encodeRequest({ ...ir, model: resolved.upstreamModel }),
   });
 
   if (!response.ok) {
@@ -43,13 +48,9 @@ async function handleIrViaJava(ir: IrRequest, ctx: HandlerCtx, doFetch: typeof f
 
   if (ir.stream) {
     if (!response.body) throw new HandleIrError({ status: 502, body: "custom-auth: upstream returned no body for a streamed request" });
-    // Streaming decode is not ported to java/custom yet, so it goes through the installed
-    // translator's own decodeStream, which is Java-backed independently of this module.
-    const streaming = (await loadTranslators(ctx.configDir))[prepared.endpoint.format];
-    if (!streaming) throw new HandleIrError({ status: 400, body: "custom-auth: no translator installed for wire format " + prepared.endpoint.format });
-    return response.body.pipeThrough(await streaming.decodeStream());
+    return response.body.pipeThrough(await translator.decodeStream());
   }
-  return decodeResponseViaJava(await response.text()) as Promise<IrResponse>;
+  return translator.decodeResponse(await response.text()) as Promise<IrResponse>;
 }
 
 async function handleIrViaTs(ir: IrRequest, ctx: HandlerCtx, doFetch: typeof fetch): Promise<IrResponse | ReadableStream<IrStreamEvent>> {

@@ -3,27 +3,6 @@ import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { installTranslator } from "./installTranslator.js";
-import { openaiTranslator } from "@intisy-ai/openai-translator";
-
-// Frozen fixture: byte-identical to java/custom's CustomHandleIrTest.EXPECTED_WIRE_BODY. Both
-// sides encode the SAME IrRequest shape through openai-translator's Java (openaiTranslator here
-// wraps the same OpenaiRequestCodec.encodeRequest that java/custom's CustomHandleIr.prepareRequest
-// calls directly), so this asserts the TS driver and the new Java module never drift. A deliberate
-// change to OpenaiRequestCodec's encode shape must update both fixtures together.
-const EXPECTED_WIRE_BODY =
-  '{"model":"llama-3.1-70b","messages":[{"role":"user","content":[{"type":"text","text":"Hello, custom endpoint!"}]}],"stream":false}';
-
-describe("custom-auth <-> java/custom parity", () => {
-  it("openai-translator's TS-side encode matches java/custom's frozen fixture", async () => {
-    const ir = {
-      model: "llama-3.1-70b",
-      stream: false,
-      messages: [{ role: "user", content: [{ kind: "text", text: "Hello, custom endpoint!" }] }],
-    } as never;
-    const wireBody = await openaiTranslator.encodeRequest(ir);
-    expect(wireBody).toBe(EXPECTED_WIRE_BODY);
-  });
-});
 
 function seedHome(): string {
   const home = mkdtempSync(join(tmpdir(), "custom-auth-java-"));
@@ -35,6 +14,9 @@ function seedHome(): string {
   return home;
 }
 
+// The Java path is endpoint RESOLUTION in Java plus translation through the installed
+// translator. Encode/decode parity with a vendor's Java is that translator repo's own concern
+// now: this plugin binds no vendor at build time and has none to compare against.
 describe("custom-auth handleIr (Java path, HUB_CUSTOM_AUTH_JAVA_HANDLE=1)", () => {
   afterEach(() => {
     delete process.env.HUB_CUSTOM_AUTH_JAVA_HANDLE;

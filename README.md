@@ -6,9 +6,12 @@
 
 A generic [`core-auth`](https://github.com/intisy-ai/core-auth) provider for user-configured HTTP AI
 endpoints. Instead of one upstream vendor, it drives any number of endpoints declared in its own
-config, each with its own wire format, translating canonical IR to and from that format via a
-translator submodule (`openai-translator`, more later). The API key for each endpoint is never
-stored in config: it lives in core-auth's account store, reachable only through the Accounts menu.
+config, each with its own wire format, translating canonical IR to and from that format via
+whichever vendor translators are installed. It vendors none itself: every `@intisy-ai/*-translator`
+in the home's shared library store is discovered at runtime, so a translator published later is
+usable without updating this plugin, and a home with none installed speaks no format yet. The API
+key for each endpoint is never stored in config: it lives in core-auth's account store, reachable
+only through the Accounts menu.
 
 ## Under-the-Hood Architecture
 
@@ -35,8 +38,10 @@ flowchart LR
   - `src/handler.ts`, Claude entry (exposes the IR-native `handleIr` the proxy front-door calls).
   - `src/index.ts`, OpenCode entry (`defineProvider(driver).opencode`) and the `/custom-auth-config`
     CLI guard.
-  - `openai-translator/`, `core-auth/`, `core/`, git submodules (the OpenAI wire translator; the
-    auth engine; shared config/logging), bundled in.
+  - `src/translators.ts`, discovery of the installed vendor translators (package name to wire
+    format, found by shape rather than export name).
+  - `core-auth/`, `core/`, `core-ir/`, git submodules (the auth engine; shared config/logging; the
+    canonical IR types), bundled in.
 - `dist/`
   - `dist/index.js`, `dist/handler.js`, `dist/driver.js`, esbuild bundles the submodules in,
     producing self-contained entries; not committed.

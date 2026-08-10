@@ -4,9 +4,6 @@
 [submodule "core-auth"]
 	path = core-auth
 	url = https://github.com/intisy-ai/core-auth.git
-[submodule "openai-translator"]
-	path = openai-translator
-	url = https://github.com/intisy-ai/openai-translator.git
 [submodule "core-ir"]
 	path = core-ir
 	url = https://github.com/intisy-ai/core-ir.git

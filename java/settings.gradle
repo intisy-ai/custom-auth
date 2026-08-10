@@ -6,13 +6,9 @@ apply from: file("../core/gradle/submodule-modules.gradle")
 // here, the ecosystem convention: Gradle settings do not nest, so every consumer re-declares it).
 includeFromSubmodule ":ir", "core-ir"
 
-// :openai is the OpenAI translator + codecs, reached via the nested openai-translator submodule,
-// re-declared the same way :ir is above. :custom reuses OpenaiTranslator's encode/decode rather
-// than re-implementing OpenAI wire translation.
-includeFromSubmodule ":openai", "openai-translator"
 
 // :custom       - endpoint resolution (mirrors src/endpoints.ts resolveEndpoint) + the handleIr
-//                 composition (resolve, encode via :openai, decode via :openai).
-// :teavm-custom - TeaVM JS export surface over :custom + :openai + :ir.
+//                 composition (resolve only; translation is the host's, through the installed translator).
+// :teavm-custom - TeaVM JS export surface over :custom + :ir.
 include ":custom"
 include ":teavm-custom"
