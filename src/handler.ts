@@ -11,10 +11,7 @@ setActivityEmitter((spec: unknown, source: string) => emitEvent(spec, source));
 
 // driver has no .accounts and no .loginFlow (keys are entered directly, no OAuth), so
 // providerHandlerExports naturally omits accounts/menu/menuModel/loginFlow.
-export const { handleIr, def } = providerHandlerExports(driver);
-// Each configured endpoint is a first-class provider; Cairn and the loader enumerate these via
-// loadProviderDefs, and the proxy serves them from the materialized .dynamic-providers.json.
-export { resolveProviders } from "./driver.js";
+export const { handleIr } = providerHandlerExports(driver);
 // What a host needs to add an endpoint of its own: store its key, and re-materialise the
 // manifest so the new endpoint is routable straight away. A loader has no business holding
 // either, so it asks this bundle instead.

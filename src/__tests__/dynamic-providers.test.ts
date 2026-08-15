@@ -20,30 +20,6 @@ function seedHome(accounts: Record<string, unknown> = {}): string {
   return home;
 }
 
-describe("resolveProviders: one first-class provider per endpoint", () => {
-  it("returns a provider per endpoint, each pooled by its own id with its raw models", async () => {
-    vi.resetModules();
-    seedHome();
-    const { resolveProviders } = await import("../driver.js");
-    const providers = resolveProviders();
-    expect(providers.map((p) => p.id)).toEqual(["local", "corp"]);
-    expect(providers.every((p) => p.accountPool === p.id)).toBe(true);
-    expect(Object.keys(providers[0].models)).toEqual(["gpt-4o", "gpt-4o-mini"]);
-    expect(providers.every((p) => p.hasOAuth === false)).toBe(true);
-  });
-
-  it("returns [] when no endpoints are configured", async () => {
-    vi.resetModules();
-    const home = mkdtempSync(join(tmpdir(), "custom-auth-dyn-"));
-    const cfg = join(home, "config");
-    mkdirSync(cfg, { recursive: true });
-    writeFileSync(join(cfg, "custom-auth.json"), JSON.stringify({ endpoints: [] }));
-    process.env.HUB_CONFIG_DIR = home;
-    const { resolveProviders } = await import("../driver.js");
-    expect(resolveProviders()).toEqual([]);
-  });
-});
-
 describe("buildDynamicManifest / writeDynamicManifest", () => {
   it("builds one manifest entry per endpoint in the loader's readDynamicProviders shape", async () => {
     vi.resetModules();

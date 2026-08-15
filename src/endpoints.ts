@@ -3,7 +3,7 @@ import { join } from "node:path";
 // core's build (tsc --noEmit + esbuild bundle) ships no declaration file for its dist.
 // @ts-ignore
 import { getConfigValue, setConfigValue } from "@intisy-ai/core";
-import { AccountManager, accountControllerFromManager, addAccount, removeAccount, getConfigDir, cacheDir } from "@intisy-ai/core-auth";
+import { AccountManager, addAccount, removeAccount, getConfigDir, cacheDir } from "@intisy-ai/core-auth";
 import { HandleIrError } from "./errors.js";
 import { supportedFormats } from "./translators.js";
 
@@ -98,13 +98,6 @@ export function endpointViews(): Array<Endpoint & { hasKey: boolean }> {
 // participate in the same account machinery as any other provider's accounts.
 function poolAccounts(providerId: string): StoredAccount[] {
   return new AccountManager(providerId, {}).list() as StoredAccount[];
-}
-
-// Standard account-controller surface (list/enable/remove) for one endpoint's key pool, so it
-// is visible through the same accounts UI as every other provider's pool instead of being
-// invisible. No login: keys are entered directly via saveKey, there is no OAuth flow to drive.
-export function accountsFor(endpointId: string) {
-  return accountControllerFromManager(new AccountManager(endpointId, {}), {});
 }
 
 export function splitModel(model: string): { endpointId: string; upstreamModel: string } {

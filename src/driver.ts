@@ -3,7 +3,7 @@ import { loadTranslators } from "./translators.js";
 // @ts-ignore
 import { getConfigValue, setConfigValue, emitEvent } from "@intisy-ai/core";
 import { toSettingsGroups, setActivityEmitter, type ProviderSettingsSchema } from "@intisy-ai/core-auth";
-import { resolveEndpoint, readEndpoints, advertisedModels, splitModel, writeDynamicManifest, migrateLegacyKeys, accountsFor, keyFor } from "./endpoints.js";
+import { resolveEndpoint, readEndpoints, advertisedModels, splitModel, writeDynamicManifest, keyFor } from "./endpoints.js";
 import { HandleIrError, handleIrErrorFromResponse } from "./errors.js";
 import { javaHandleEnabled, resolveEndpointViaJava } from "./javaHandle.js";
 
@@ -116,22 +116,6 @@ function setSetting(key: string, value: unknown): void {
   if (value === undefined) { setConfigValue("custom-auth", "endpoints", []); }
   else { try { setConfigValue("custom-auth", "endpoints", JSON.parse(String(value))); } catch { return; /* malformed JSON, keep prior value + manifest */ } }
   writeDynamicManifest();
-}
-
-// One first-class provider per configured endpoint (its own id, models, and account pool), so
-// each endpoint appears as a real provider rather than a namespaced model on a single "custom"
-// provider. Returns [] when no endpoints are configured. Never throws: enumeration must stay
-// cheap and safe (a config read + a best-effort key migration).
-export function resolveProviders(): Array<{ id: string; label: string; models: Record<string, { name: string }>; hasOAuth: false; accountPool: string; accounts: ReturnType<typeof accountsFor> }> {
-  try { migrateLegacyKeys(); } catch { /* best-effort */ }
-  return readEndpoints().map((e) => ({
-    id: e.id,
-    label: e.label,
-    models: Object.fromEntries(e.models.map((m) => [m, { name: m }])),
-    hasOAuth: false,
-    accountPool: e.id,
-    accounts: accountsFor(e.id),
-  }));
 }
 
 export const driver = {
