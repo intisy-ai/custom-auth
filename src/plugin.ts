@@ -1,7 +1,7 @@
 import { providerCapability } from "@intisy-ai/core-auth";
 import type { CustomEndpointsCapability, Plugin, PluginContext, ProviderDescriptor } from "@intisy-ai/api";
 import { driver } from "./driver.js";
-import { migrateLegacyKeys, readEndpoints } from "./endpoints.js";
+import { migrateLegacyKeys, readEndpoints, writeDynamicManifest } from "./endpoints.js";
 
 /**
  * One lane per endpoint the user configured, resolved when a host asks rather than at activation.
@@ -40,6 +40,10 @@ const plugin: Plugin = {
     // rejects the assignment without a cast (see index.ts's own driver: driver as never).
     context.provide("provider", providerCapability(driver as never, configuredLanes));
     context.provide("custom-endpoints", customEndpoints());
+    // A throwing activate quarantines the whole plugin, so a cache-write failure must never
+    // escape here; index.ts's own republish never runs from the deployed bundle path (its
+    // gate checks for "/dist/"), so this is the one place that keeps the manifest current.
+    try { writeDynamicManifest(); } catch { /* best-effort */ }
   },
   deactivate() {},
 };

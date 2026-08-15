@@ -20,3 +20,6 @@ export const CustomProvider = await defineProviderPlugin({
   defaults: { endpoints: [] },
   capabilities: { fields: toCapabilitiesFields(CUSTOM_SETTINGS_SCHEMA) },
 });
+
+// CustomProvider stays exported too: OpenCode invokes every exported function, while an api host reads the default.
+export { default } from "./plugin.js";
