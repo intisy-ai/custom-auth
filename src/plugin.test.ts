@@ -1,0 +1,98 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { mkdtempSync, readFileSync, existsSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
+let home: string;
+
+beforeEach(() => {
+  vi.resetModules();
+  home = mkdtempSync(join(tmpdir(), "custom-auth-plugin-"));
+  process.env.HUB_CONFIG_DIR = home;
+});
+
+function contextSpy() {
+  const provided: Record<string, unknown> = {};
+  return {
+    provided,
+    context: { provide: vi.fn((id: string, value: unknown) => { provided[id] = value; }), paths: { home } },
+  };
+}
+
+async function activate() {
+  const plugin = (await import("./plugin.js")).default;
+  const { context, provided } = contextSpy();
+  await plugin.activate(context as never);
+  return { plugin, provided };
+}
+
+describe("the custom-auth api plugin", () => {
+  it("provides exactly the two capabilities its manifest declares", async () => {
+    const { provided } = await activate();
+    expect(Object.keys(provided).sort()).toEqual(["custom-endpoints", "provider"]);
+  });
+
+  it("advertises only its own lane when no endpoint is configured", async () => {
+    const { provided } = await activate();
+    const lanes = await (provided.provider as { providers: () => Promise<Array<{ id: string }>> }).providers();
+    expect(lanes.map((lane) => lane.id)).toEqual(["custom"]);
+  });
+
+  it("answers an empty endpoint list when no endpoint is configured", async () => {
+    const { provided } = await activate();
+    await expect((provided["custom-endpoints"] as { endpoints: () => Promise<unknown[]> }).endpoints()).resolves.toEqual([]);
+  });
+
+  it("advertises one lane per configured endpoint, after its own", async () => {
+    const { setConfigValue } = await import("@intisy-ai/core");
+    setConfigValue("custom-auth", "endpoints", [
+      { id: "mine", label: "Mine", baseUrl: "https://api.example.com/v1", format: "openai", models: ["m"] },
+    ]);
+    const { provided } = await activate();
+    const lanes = await (provided.provider as { providers: () => Promise<Array<{ id: string; translator?: string }>> }).providers();
+    expect(lanes.map((lane) => lane.id)).toEqual(["custom", "mine"]);
+    expect(lanes[1].translator).toBe("custom");
+  });
+
+  it("deactivates without throwing", async () => {
+    const { plugin } = await activate();
+    expect(plugin.deactivate()).toBeUndefined();
+  });
+});
+
+describe("writeDynamicManifest", () => {
+  it("writes the home's cache file, keyed by this plugin's id", async () => {
+    const { setConfigValue } = await import("@intisy-ai/core");
+    setConfigValue("custom-auth", "endpoints", [
+      { id: "mine", label: "Mine", baseUrl: "https://api.example.com/v1", format: "openai", models: ["m"] },
+    ]);
+    const { writeDynamicManifest } = await import("./endpoints.js");
+    writeDynamicManifest();
+    const at = join(home, "cache", "dynamic-providers.json");
+    expect(existsSync(at)).toBe(true);
+    expect(JSON.parse(readFileSync(at, "utf8"))).toEqual({
+      "custom-auth": [{ name: "mine", repo: "custom-auth", handler: "dist/handler.js", translator: "custom", accountPool: "mine" }],
+    });
+  });
+
+  it("writes an empty list rather than removing the key when the last endpoint goes", async () => {
+    const { writeDynamicManifest } = await import("./endpoints.js");
+    writeDynamicManifest();
+    expect(JSON.parse(readFileSync(join(home, "cache", "dynamic-providers.json"), "utf8"))).toEqual({ "custom-auth": [] });
+  });
+
+  it("leaves another plugin's lanes untouched", async () => {
+    const { mkdirSync, writeFileSync } = await import("node:fs");
+    mkdirSync(join(home, "cache"), { recursive: true });
+    writeFileSync(
+      join(home, "cache", "dynamic-providers.json"),
+      JSON.stringify({ "other-plugin": [{ name: "theirs", repo: "other-plugin", handler: "dist/handler.js" }] }),
+      "utf8",
+    );
+    const { writeDynamicManifest } = await import("./endpoints.js");
+    writeDynamicManifest();
+    const parsed = JSON.parse(readFileSync(join(home, "cache", "dynamic-providers.json"), "utf8"));
+    expect(parsed["other-plugin"]).toHaveLength(1);
+    expect(parsed["custom-auth"]).toEqual([]);
+  });
+});

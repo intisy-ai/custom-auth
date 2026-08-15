@@ -1,10 +1,9 @@
-import { writeFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 // core's build (tsc --noEmit + esbuild bundle) ships no declaration file for its dist.
 // @ts-ignore
 import { getConfigValue, setConfigValue } from "@intisy-ai/core";
-import { AccountManager, accountControllerFromManager, addAccount, removeAccount, getConfigDir } from "@intisy-ai/core-auth";
+import { AccountManager, accountControllerFromManager, addAccount, removeAccount, getConfigDir, cacheDir } from "@intisy-ai/core-auth";
 import { HandleIrError } from "./errors.js";
 import { supportedFormats } from "./translators.js";
 
@@ -67,6 +66,7 @@ export function validateEndpoint(endpoint: Partial<Endpoint>, opts: { existing?:
 // Adds or replaces an endpoint and makes it routable in one step: validate, store, then
 // re-materialise the manifest the provider scan reads. A host calls this instead of writing
 // the config itself, so every route in has the same rules and the same follow-through.
+/** @param repoDir - accepted for callers that still pass a checkout path; the manifest now lives in the home. */
 export async function upsertEndpoint(endpoint: Endpoint, repoDir?: string): Promise<void> {
   const endpoints = readEndpoints();
   // Asked rather than assumed: a format is valid when a translator for it is actually
@@ -78,13 +78,14 @@ export async function upsertEndpoint(endpoint: Endpoint, repoDir?: string): Prom
   if (index >= 0) next[index] = endpoint;
   else next.push(endpoint);
   setConfigValue("custom-auth", "endpoints", next);
-  writeDynamicManifest(repoDir);
+  writeDynamicManifest();
 }
 
+/** @param repoDir - accepted for callers that still pass a checkout path; the manifest now lives in the home. */
 export function removeEndpoint(id: string, repoDir?: string): void {
   setConfigValue("custom-auth", "endpoints", readEndpoints().filter((e) => e.id !== id));
   removeAccount(id, id, undefined);
-  writeDynamicManifest(repoDir);
+  writeDynamicManifest();
 }
 
 // Each endpoint with whether a key has been entered for it, which is what a host lists.
@@ -142,27 +143,52 @@ export function saveKey(endpointId: string, key: string): void {
   addAccount(endpointId, { id: endpointId, refresh: key, enabled: true, meta: { endpointId } }, undefined);
 }
 
-export type DynamicProviderEntry = { name: string; handler: string; translator: string; accountPool: string };
+/** This plugin's id, which is also its clone directory and the key its lanes are filed under. */
+const PLUGIN_ID = "custom-auth";
 
-// One dynamic provider per configured endpoint, in the shape core-loader's readDynamicProviders
-// expects. The proxy's provider scan reads these from <repo>/.dynamic-providers.json, so the
-// per-endpoint providers become routable the moment endpoints are saved (Cairn reads them live
-// through resolveProviders()).
+export type DynamicProviderEntry = { name: string; repo: string; handler: string; translator: string; accountPool: string };
+
+/** One routable lane per configured endpoint, in the shape a host's provider scan reads. */
 export function buildDynamicManifest(): DynamicProviderEntry[] {
-  return readEndpoints().map((e) => ({ name: e.id, handler: "dist/handler.js", translator: "custom", accountPool: e.id }));
+  return readEndpoints().map((endpoint) => ({
+    name: endpoint.id,
+    repo: PLUGIN_ID,
+    handler: "dist/handler.js",
+    translator: "custom",
+    accountPool: endpoint.id,
+  }));
 }
 
-// Repo root of the deployed clone (parent of dist/, where this module bundles to). The manifest
-// sits beside package.json so the loader's per-repo scan finds it.
-function defaultRepoDir(): string {
-  return fileURLToPath(new URL("..", import.meta.url));
+function dynamicManifestPath(): string {
+  return join(cacheDir(), "dynamic-providers.json");
 }
 
-// Materializes .dynamic-providers.json from the current endpoints. Best-effort: a write failure
-// (read-only checkout, permissions) leaves serving on whatever the last manifest declared.
-export function writeDynamicManifest(repoDir: string = defaultRepoDir()): void {
+function readHomeManifest(at: string): Record<string, unknown> {
   try {
-    writeFileSync(join(repoDir, ".dynamic-providers.json"), JSON.stringify(buildDynamicManifest(), null, 2));
+    const parsed = JSON.parse(readFileSync(at, "utf8"));
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * Publishes this plugin's lanes into the app home, replacing only its own key.
+ *
+ * @remarks
+ * The home rather than the checkout, because an endpoint the user configured is state of that home
+ * and a checkout is replaced on every update. Best-effort: a write failure leaves serving on
+ * whatever the last published manifest declared. An empty list is written rather than the key
+ * removed, so removing the last endpoint is a published fact rather than an absence a reader would
+ * have to guess at.
+ */
+export function writeDynamicManifest(): void {
+  try {
+    const at = dynamicManifestPath();
+    const all = readHomeManifest(at);
+    all[PLUGIN_ID] = buildDynamicManifest();
+    mkdirSync(cacheDir(), { recursive: true });
+    writeFileSync(at, JSON.stringify(all, null, 2));
   } catch { /* best-effort */ }
 }
 

@@ -5,9 +5,8 @@ import { defineConfig, defineCapabilities, defineReadme, maybeRunReadmeCli, depl
 import { driver, CUSTOM_SETTINGS_SCHEMA } from "./driver.js";
 import { writeDynamicManifest } from "./endpoints.js";
 
-// Materialize the per-endpoint provider manifest for the proxy scan, so endpoints configured
-// before this build (or on a fresh deploy) become routable without waiting for a re-save. Gated
-// to the deployed bundle so unit tests importing this module never write into the source tree.
+// Publish this plugin's lanes on load so endpoints configured before this build become routable
+// without waiting for a re-save. Gated to the deployed bundle so a unit test never writes a home.
 if (import.meta.url.includes("/dist/")) { try { writeDynamicManifest(); } catch { /* best-effort */ } }
 
 // Best-effort: let core-auth's account activity (added/removed/login/rate_limited/models_refreshed) flow onto the bus.

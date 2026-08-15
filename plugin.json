@@ -1,0 +1,13 @@
+{
+  "$schema": "./core/api/schema/plugin.schema.json",
+  "id": "custom-auth",
+  "api": 1,
+  "entry": "dist/plugin.js",
+  "displayName": "Custom endpoints",
+  "capabilities": ["provider", "custom-endpoints"],
+  "repo": {
+    "role": "Custom user-endpoint provider",
+    "category": "ai-provider",
+    "tech": "typescript"
+  }
+}

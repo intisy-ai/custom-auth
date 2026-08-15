@@ -50,19 +50,18 @@ describe("buildDynamicManifest / writeDynamicManifest", () => {
     seedHome();
     const { buildDynamicManifest } = await import("../endpoints.js");
     expect(buildDynamicManifest()).toEqual([
-      { name: "local", handler: "dist/handler.js", translator: "custom", accountPool: "local" },
-      { name: "corp", handler: "dist/handler.js", translator: "custom", accountPool: "corp" },
+      { name: "local", repo: "custom-auth", handler: "dist/handler.js", translator: "custom", accountPool: "local" },
+      { name: "corp", repo: "custom-auth", handler: "dist/handler.js", translator: "custom", accountPool: "corp" },
     ]);
   });
 
-  it("writes .dynamic-providers.json to the given repo dir", async () => {
+  it("writes the home's cache file, keyed by this plugin's id", async () => {
     vi.resetModules();
-    seedHome();
-    const repoDir = mkdtempSync(join(tmpdir(), "custom-auth-repo-"));
+    const home = seedHome();
     const { writeDynamicManifest } = await import("../endpoints.js");
-    writeDynamicManifest(repoDir);
-    const written = JSON.parse(readFileSync(join(repoDir, ".dynamic-providers.json"), "utf-8"));
-    expect(written.map((e: { name: string }) => e.name)).toEqual(["local", "corp"]);
+    writeDynamicManifest();
+    const written = JSON.parse(readFileSync(join(home, "cache", "dynamic-providers.json"), "utf-8"));
+    expect(written["custom-auth"].map((e: { name: string }) => e.name)).toEqual(["local", "corp"]);
   });
 });
 
