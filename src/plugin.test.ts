@@ -49,9 +49,17 @@ describe("the custom-auth api plugin", () => {
       { id: "mine", label: "Mine", baseUrl: "https://api.example.com/v1", format: "openai", models: ["m"] },
     ]);
     const { provided } = await activate();
-    const lanes = await (provided.provider as { providers: () => Promise<Array<{ id: string; translator?: string }>> }).providers();
+    type Lane = { id: string; label: string; models: Record<string, { name: string }>; hasOAuth: boolean; accountPool: string; translator?: string };
+    const lanes = await (provided.provider as { providers: () => Promise<Lane[]> }).providers();
     expect(lanes.map((lane) => lane.id)).toEqual(["custom", "mine"]);
-    expect(lanes[1].translator).toBe("custom");
+    expect(lanes[1]).toEqual({
+      id: "mine",
+      label: "Mine",
+      models: { m: { name: "m" } },
+      hasOAuth: false,
+      accountPool: "mine",
+      translator: "custom",
+    });
   });
 
   it("deactivates without throwing", async () => {
