@@ -114,7 +114,7 @@ export function keyFor(endpointId: string): string {
   throw new HandleIrError({ status: 401, body: "custom-auth: no API key configured for endpoint " + endpointId });
 }
 
-// Resolves the endpoint to serve. The resolved provider id (HandlerCtx.provider) names the
+// Resolves the endpoint to serve. The resolved provider id (HandlerCtx.handlerId) names the
 // endpoint directly and the model is the raw upstream model; a namespaced <endpointId>/<model>
 // is the back-compat fallback when no provider id is supplied.
 export function resolveEndpoint(model: string, provider?: string): { endpointId: string; upstreamModel: string; endpoint: Endpoint; apiKey: string } {

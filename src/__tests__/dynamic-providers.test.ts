@@ -68,7 +68,7 @@ describe("keyFor / migrateLegacyKeys: per-endpoint pools with a legacy fallback"
   });
 });
 
-describe("handleIr resolves the endpoint from ctx.provider + raw model", () => {
+describe("handleIr resolves the endpoint from ctx.handlerId + raw model", () => {
   it("serves the raw model under the endpoint named by the provider id", async () => {
     vi.resetModules();
     seedHome({ local: { accounts: [{ id: "local", refresh: "sk-own", enabled: true }], activeIndex: 0, activeIndexByLane: {} } });
@@ -79,7 +79,7 @@ describe("handleIr resolves the endpoint from ctx.provider + raw model", () => {
     }), { status: 200, headers: { "content-type": "application/json" } }));
     const { handleIr } = await import("../driver.js");
     const ir = { model: "gpt-4o", messages: [{ role: "user", content: [{ kind: "text", text: "hi" }] }], stream: false } as never;
-    await handleIr(ir, { configDir: process.env.HUB_CONFIG_DIR!, log: () => {}, model: "gpt-4o", provider: "local" }, { fetch: fetchStub } as never);
+    await handleIr(ir, { configDir: process.env.HUB_CONFIG_DIR!, log: () => {}, model: "gpt-4o", handlerId: "local" }, { fetch: fetchStub } as never);
     const [url, opts] = fetchStub.mock.calls[0];
     expect(String(url)).toContain("https://ep.test/v1");
     expect((opts as { headers: Record<string, string> }).headers.Authorization).toBe("Bearer sk-own");

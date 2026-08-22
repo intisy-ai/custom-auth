@@ -29,7 +29,7 @@ export { HandleIrError };
 // into the bundle would fix it at build time. Dormant unless HUB_CUSTOM_AUTH_JAVA_HANDLE=1;
 // handleIrViaTs below is the unconditional default.
 async function handleIrViaJava(ir: IrRequest, ctx: HandlerCtx, doFetch: typeof fetch): Promise<IrResponse | ReadableStream<IrStreamEvent>> {
-  const resolved = await resolveEndpointViaJava(readEndpoints(), ir.model, ctx?.provider);
+  const resolved = await resolveEndpointViaJava(readEndpoints(), ir.model, ctx?.handlerId);
   const translator = (await loadTranslators(ctx.configDir))[resolved.endpoint.format];
   if (!translator) throw new HandleIrError({ status: 400, body: "custom-auth: no translator installed for wire format " + resolved.endpoint.format });
 
@@ -54,7 +54,7 @@ async function handleIrViaJava(ir: IrRequest, ctx: HandlerCtx, doFetch: typeof f
 }
 
 async function handleIrViaTs(ir: IrRequest, ctx: HandlerCtx, doFetch: typeof fetch): Promise<IrResponse | ReadableStream<IrStreamEvent>> {
-  const { upstreamModel, endpoint, apiKey } = resolveEndpoint(ir.model, ctx?.provider);
+  const { upstreamModel, endpoint, apiKey } = resolveEndpoint(ir.model, ctx?.handlerId);
   const translator = (await loadTranslators(ctx.configDir))[endpoint.format];
   if (!translator) throw new HandleIrError({ status: 400, body: "custom-auth: unsupported wire format " + endpoint.format });
 

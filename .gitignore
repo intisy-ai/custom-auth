@@ -1,8 +1,11 @@
 node_modules/
 /dist/
+build/
+*/build/
+.gradle/
 docs/
 .superpowers/
-# TeaVM-compiled java/custom export staged by core/teavm-build.mjs at build time, never committed.
+# TeaVM-compiled custom export staged by core/teavm-build.mjs at build time, never committed.
 src/generated/
 .dynamic-providers.json
 .idea/

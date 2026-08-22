@@ -1,5 +1,4 @@
-import { providerCapability } from "@intisy-ai/core-auth";
-import { PROVIDER } from "@intisy-ai/core-ir";
+import { PROVIDER, providerCapability } from "@intisy-ai/core-auth";
 import type { Plugin, PluginContext } from "@intisy-ai/api";
 import { CUSTOM_ENDPOINTS } from "@intisy-ai/core";
 import type { CustomEndpointsCapability } from "@intisy-ai/core";
