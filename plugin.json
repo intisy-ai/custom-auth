@@ -4,7 +4,16 @@
   "api": 1,
   "entry": "dist/index.js",
   "displayName": "Custom endpoints",
-  "capabilities": ["provider", "custom-endpoints"],
+  "capabilities": [
+    "provider",
+    "custom-endpoints",
+    "settings"
+  ],
+  "config": {
+    "defaults": {
+      "endpoints": []
+    }
+  },
   "repo": {
     "role": "Custom user-endpoint provider",
     "category": "ai-provider",

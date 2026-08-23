@@ -15,7 +15,12 @@ function contextSpy() {
   const provided: Record<string, unknown> = {};
   return {
     provided,
-    context: { provide: vi.fn((key: string | { id: string }, value: unknown) => { provided[typeof key === "string" ? key : key.id] = value; }), paths: { home } },
+    context: {
+      provide: vi.fn((key: string | { id: string }, value: unknown) => { provided[typeof key === "string" ? key : key.id] = value; }),
+      // The engine mints a typed key from an id alone, which is all the plugin needs from it here.
+      capability: (id: string) => ({ id }),
+      paths: { home },
+    },
   };
 }
 
@@ -27,9 +32,9 @@ async function activate() {
 }
 
 describe("the custom-auth api plugin", () => {
-  it("provides exactly the two capabilities its manifest declares", async () => {
+  it("provides exactly the capabilities its manifest declares", async () => {
     const { provided } = await activate();
-    expect(Object.keys(provided).sort()).toEqual(["custom-endpoints", "provider"]);
+    expect(Object.keys(provided).sort()).toEqual(["custom-endpoints", "provider", "settings"]);
   });
 
   it("advertises only its own lane when no endpoint is configured", async () => {

@@ -1,8 +1,8 @@
-import { defineProviderPlugin, toCapabilitiesFields, setActivityEmitter } from "@intisy-ai/core-auth";
+import { defineProviderPlugin, setActivityEmitter } from "@intisy-ai/core-auth";
 // core's build (tsc --noEmit + esbuild bundle) ships no declaration file for its dist.
 // @ts-ignore
-import { defineConfig, defineCapabilities, defineReadme, maybeRunReadmeCli, deployCommands, maybeRunConfigCli, emitEvent } from "@intisy-ai/core";
-import { driver, CUSTOM_SETTINGS_SCHEMA } from "./driver.js";
+import { emitEvent } from "@intisy-ai/core";
+import { driver } from "./driver.js";
 import { writeDynamicManifest } from "./endpoints.js";
 
 // Publish this plugin's lanes on load so endpoints configured before this build become routable
@@ -15,10 +15,6 @@ setActivityEmitter((spec: unknown, source: string) => emitEvent(spec, source));
 export const CustomProvider = await defineProviderPlugin({
   name: "custom-auth",
   driver: driver as never, // ProviderDef still declares the legacy `handle` field; this provider is handleIr-only
-  core: { defineConfig, defineCapabilities, defineReadme, maybeRunReadmeCli, deployCommands },
-  configCliGuard: () => maybeRunConfigCli("custom-auth"),
-  defaults: { endpoints: [] },
-  capabilities: { fields: toCapabilitiesFields(CUSTOM_SETTINGS_SCHEMA) },
 });
 
 // CustomProvider stays exported too: OpenCode invokes every exported function, while an api host reads the default.
