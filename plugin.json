@@ -18,5 +18,10 @@
     "role": "Custom user-endpoint provider",
     "category": "ai-provider",
     "tech": "typescript"
+  },
+  "services": {
+    "consumes": [
+      "provider-support"
+    ]
   }
 }

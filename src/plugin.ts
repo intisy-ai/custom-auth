@@ -1,7 +1,6 @@
-import { providerCapability } from "@intisy-ai/core-auth";
 import type { Plugin, PluginContext } from "@intisy-ai/api";
 import type { CustomEndpointsCapability, SettingsCapability } from "@intisy-ai/core";
-import type { ProviderCapability, ProviderDescriptor } from "@intisy-ai/core-auth";
+import type { ProviderCapability, ProviderDescriptor, ProviderSupport } from "@intisy-ai/core-auth";
 import { driver } from "./driver.js";
 import { migrateLegacyKeys, readEndpoints, writeDynamicManifest } from "./endpoints.js";
 import { CUSTOM_SETTINGS } from "./settings.js";
@@ -36,12 +35,25 @@ function customEndpoints(): CustomEndpointsCapability {
   };
 }
 
-/** What an in-process host loads: the api plugin this bundle's default export carries. */
+// The id the manifest states under services.consumes. Named here rather than imported, because
+// importing it would link the library this service exists to keep out of the bundle.
+const PROVIDER_SUPPORT = "provider-support";
+
+/**
+ * What an in-process host loads: the api plugin this bundle's default export carries.
+ *
+ * @remarks
+ * The provider helpers come from the host rather than from an import, so this bundle carries no
+ * copy of the library that implements them. A host offering none cannot run a provider at all, so
+ * the throw names the service instead of leaving the capability silently unprovided.
+ */
 const plugin: Plugin = {
   activate(context: PluginContext) {
+    const support = context.services.get(context.service<ProviderSupport>(PROVIDER_SUPPORT));
+    if (!support) throw new Error(`this host offers no "${PROVIDER_SUPPORT}" service, so it cannot run a provider`);
     // driver.handleIr takes typed IR params; ProviderDef declares them unknown, so strict mode
     // rejects the assignment without a cast (see index.ts's own driver: driver as never).
-    context.provide(context.capability<ProviderCapability>("provider"), providerCapability(driver as never, configuredLanes));
+    context.provide(context.capability<ProviderCapability>("provider"), support.capability(driver as never, configuredLanes));
     context.provide(context.capability<CustomEndpointsCapability>("custom-endpoints"), customEndpoints());
     context.provide(context.capability<SettingsCapability>("settings"), {
       schema: () => CUSTOM_SETTINGS,
