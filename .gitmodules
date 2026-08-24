@@ -1,9 +1,0 @@
-[submodule "core"]
-	path = core
-	url = https://github.com/intisy-ai/core.git
-[submodule "core-auth"]
-	path = core-auth
-	url = https://github.com/intisy-ai/core-auth.git
-[submodule "core-ir"]
-	path = core-ir
-	url = https://github.com/intisy-ai/core-ir.git
