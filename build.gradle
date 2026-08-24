@@ -2,8 +2,17 @@
 // ../package.json). Plain java-library + JUnit, matching this module's job: resolve a configured
 // endpoint (mirroring src/endpoints.ts) and run the OpenAI encode/decode half of handleIr by
 // reusing openai-translator's Java, never re-implementing it.
+plugins {
+    id "io.github.intisy.github-gradle" version "1.10.3" apply false
+}
+
 subprojects {
     apply plugin: "java-library"
+    apply plugin: "io.github.intisy.github-gradle"
+
+    github {
+        accessToken = System.getenv("GITHUB_TOKEN") ?: ""
+    }
 
     group = "io.github.intisy"
     version = "0.1.0"

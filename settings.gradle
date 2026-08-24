@@ -4,19 +4,6 @@ plugins {
 
 rootProject.name = "custom-auth-java"
 
-apply from: file("core/gradle/submodule-modules.gradle")
-
-// :ir is core-ir's neutral IR module, reached via the nested core-ir submodule (path re-declared
-// here, the ecosystem convention: Gradle settings do not nest, so every consumer re-declares it).
-includeFromSubmodule ":ir", "core-ir"
-
-// :annotations, :processor and :contract come from api, reached through core-ir's own api submodule
-// because :ir exports api's seam types in HandlerCtx's public fields, so any build including :ir
-// must resolve api at the same coordinates.
-includeFromSubmodule ":annotations", "core-ir/api"
-includeFromSubmodule ":processor", "core-ir/api"
-includeFromSubmodule ":contract", "core-ir/api"
-
 // :custom       - endpoint resolution (mirrors src/endpoints.ts resolveEndpoint) + the handleIr
 //                 composition (resolve only; translation is the host's, through the installed translator).
 // :teavm-custom - TeaVM JS export surface over :custom + :ir.
