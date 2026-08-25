@@ -40,11 +40,9 @@ flowchart LR
     CLI guard.
   - `src/translators.ts`, discovery of the installed vendor translators (package name to wire
     format, found by shape rather than export name).
-  - `core-auth/`, `core/`, `core-ir/`, git submodules (the auth engine; shared config/logging; the
-    canonical IR types), bundled in.
 - `dist/`
-  - `dist/index.js`, `dist/handler.js`, `dist/driver.js`, esbuild bundles the submodules in,
-    producing self-contained entries; not committed.
+  - `dist/index.js`, `dist/handler.js`, `dist/driver.js`; not committed. `@intisy-ai/core`,
+    `core-auth` and `core-ir` stay external and resolve from the home's shared library store.
 
 ## Installation
 
