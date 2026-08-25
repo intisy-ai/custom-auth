@@ -1,0 +1,5 @@
+kind: generic
+description: Generic provider for user-configured HTTP AI endpoints (IR <-> vendor wire via translator submodules), key via core-auth.
+badges:
+  - npm-version
+  - npm-downloads

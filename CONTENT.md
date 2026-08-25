@@ -1,9 +1,3 @@
-# custom-auth
-
-[![npm version](https://img.shields.io/npm/v/custom-auth)](https://www.npmjs.com/package/custom-auth)
-[![npm downloads](https://img.shields.io/npm/dm/custom-auth)](https://www.npmjs.com/package/custom-auth)
-[![CI](https://img.shields.io/github/actions/workflow/status/intisy-ai/custom-auth/publish.yml)](https://github.com/intisy-ai/custom-auth/actions)
-
 A generic [`core-auth`](https://github.com/intisy-ai/core-auth) provider for user-configured HTTP AI
 endpoints. Instead of one upstream vendor, it drives any number of endpoints declared in its own
 config, each with its own wire format, translating canonical IR to and from that format via
@@ -91,7 +85,3 @@ appears in a config diff or a shared config export.
 Each endpoint's models are advertised namespaced as `<endpointId>/<upstreamModel>`, for example
 `local/gpt-4o`. Selecting one of these models routes the request through that endpoint's
 translator; the `<endpointId>` prefix is stripped before the request reaches the upstream service.
-
-## License
-
-MIT.
