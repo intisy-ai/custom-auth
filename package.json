@@ -1,6 +1,6 @@
 {
   "name": "custom-auth",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "description": "Generic provider for user-configured HTTP AI endpoints (IR <-> vendor wire via translator submodules), key via core-auth.",
   "type": "module",
   "main": "dist/index.js",
