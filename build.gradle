@@ -1,0 +1,52 @@
+// custom-auth's Java module: a self-contained Gradle build living alongside the TS (../src,
+// ../package.json). Plain java-library + JUnit, matching this module's job: resolve a configured
+// endpoint (mirroring src/endpoints.ts) and run the OpenAI encode/decode half of handleIr by
+// reusing openai-translator's Java, never re-implementing it.
+plugins {
+    id "io.github.intisy.github-gradle" version "1.10.3" apply false
+}
+
+subprojects {
+    apply plugin: "java-library"
+    apply plugin: "io.github.intisy.github-gradle"
+
+    github {
+        accessToken = System.getenv("GITHUB_TOKEN") ?: ""
+    }
+
+    group = "io.github.intisy"
+    version = "0.1.0"
+
+    repositories {
+        mavenLocal()
+        mavenCentral()
+    }
+
+    java {
+        sourceCompatibility = JavaVersion.VERSION_1_8
+        targetCompatibility = JavaVersion.VERSION_1_8
+
+        // 17 is which JDK COMPILES; options.release = 8 below is which JVM RUNS the output. The
+        // floor is 17 because TeaVM 0.15.0's artifacts publish minimum-JVM metadata above 8.
+        toolchain {
+            languageVersion = JavaLanguageVersion.of(17)
+        }
+    }
+
+    // All Java source, main and test alike, must stay within the JDK 1.8 API surface; javac enforces it.
+    tasks.matching { it.name == "compileJava" || it.name == "compileTestJava" }.configureEach {
+        options.release = 8
+    }
+
+    tasks.withType(JavaCompile).configureEach {
+        options.encoding = "UTF-8"
+    }
+
+    dependencies {
+        testImplementation "org.junit.jupiter:junit-jupiter:5.10.1"
+    }
+
+    test {
+        useJUnitPlatform()
+    }
+}

@@ -1,4 +1,0 @@
-# java/ Gradle module (custom/teavm-custom) -- build output only, never source.
-build/
-*/build/
-.gradle/

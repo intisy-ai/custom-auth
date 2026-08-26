@@ -1,10 +1,11 @@
-import { openaiTranslator, type IrRequest, type IrResponse, type IrStreamEvent } from "@intisy-ai/openai-translator";
+import type { IrRequest, IrResponse, IrStreamEvent } from "@intisy-ai/core-ir";
+import { loadTranslators } from "./translators.js";
 // @ts-ignore
 import { getConfigValue, setConfigValue, emitEvent } from "@intisy-ai/core";
 import { toSettingsGroups, setActivityEmitter, type ProviderSettingsSchema } from "@intisy-ai/core-auth";
-import { resolveEndpoint, readEndpoints, advertisedModels, splitModel, writeDynamicManifest, migrateLegacyKeys, accountsFor, keyFor } from "./endpoints.js";
+import { resolveEndpoint, readEndpoints, advertisedModels, splitModel, writeDynamicManifest, keyFor } from "./endpoints.js";
 import { HandleIrError, handleIrErrorFromResponse } from "./errors.js";
-import { javaHandleEnabled, prepareRequestViaJava, decodeResponseViaJava } from "./javaHandle.js";
+import { javaHandleEnabled, resolveEndpointViaJava } from "./javaHandle.js";
 
 // endpoints.ts routes its per-endpoint key pools through core-auth's AccountManager
 // (addAccount/removeAccount), which can emit account activity. dist/driver.js is its own
@@ -17,22 +18,27 @@ type HandleIrDeps = { fetch?: typeof fetch };
 
 export { HandleIrError };
 
-// Wire format -> translator. Only "openai" is wired up so far; other formats fail
-// fast with a 400 rather than silently mis-encoding.
-const TRANSLATORS: Record<string, typeof openaiTranslator> = { openai: openaiTranslator };
+// Wire format -> translator, resolved from what is installed rather than a list here: the
+// bundled openai translator plus every one in this home's shared store. An endpoint naming a
+// format no installed translator speaks fails fast with a 400 rather than mis-encoding.
 
 // The Java-delegated path (java/custom's CustomEndpointResolver + CustomHandleIr, reusing
-// openai-translator's Java for encode/decode): resolve + encode + decode run through the
-// TeaVM-compiled bundle, host I/O (the fetch) and the API key lookup stay here. Dormant unless
-// HUB_CUSTOM_AUTH_JAVA_HANDLE=1; handleIrViaTs below is the unconditional default.
+// endpoint RESOLUTION only): which endpoint and upstream model a request maps to runs through the
+// TeaVM-compiled bundle, host I/O (the fetch), the API key lookup and translation stay here.
+// Translation cannot be delegated: the format is whichever translator is installed, so binding one
+// into the bundle would fix it at build time. Dormant unless HUB_CUSTOM_AUTH_JAVA_HANDLE=1;
+// handleIrViaTs below is the unconditional default.
 async function handleIrViaJava(ir: IrRequest, ctx: HandlerCtx, doFetch: typeof fetch): Promise<IrResponse | ReadableStream<IrStreamEvent>> {
-  const prepared = await prepareRequestViaJava(readEndpoints(), ir, ctx?.provider);
-  const apiKey = keyFor(prepared.endpointId);
-  const url = prepared.endpoint.baseUrl.replace(/\/$/, "") + "/chat/completions";
+  const resolved = await resolveEndpointViaJava(readEndpoints(), ir.model, ctx?.handlerId);
+  const translator = (await loadTranslators(ctx.configDir))[resolved.endpoint.format];
+  if (!translator) throw new HandleIrError({ status: 400, body: "custom-auth: no translator installed for wire format " + resolved.endpoint.format });
+
+  const apiKey = keyFor(resolved.endpointId);
+  const url = resolved.endpoint.baseUrl.replace(/\/$/, "") + "/chat/completions";
   const response = await doFetch(url, {
     method: "POST",
     headers: { "content-type": "application/json", Authorization: "Bearer " + apiKey },
-    body: prepared.wireBody,
+    body: await translator.encodeRequest({ ...ir, model: resolved.upstreamModel }),
   });
 
   if (!response.ok) {
@@ -42,16 +48,14 @@ async function handleIrViaJava(ir: IrRequest, ctx: HandlerCtx, doFetch: typeof f
 
   if (ir.stream) {
     if (!response.body) throw new HandleIrError({ status: 502, body: "custom-auth: upstream returned no body for a streamed request" });
-    // Streaming decode is not ported to java/custom yet; openaiTranslator's own decodeStream is
-    // already Java-backed (openai-translator's TeaVM bundle) independently of this module.
-    return response.body.pipeThrough(await openaiTranslator.decodeStream());
+    return response.body.pipeThrough(await translator.decodeStream());
   }
-  return decodeResponseViaJava(await response.text()) as Promise<IrResponse>;
+  return translator.decodeResponse(await response.text()) as Promise<IrResponse>;
 }
 
 async function handleIrViaTs(ir: IrRequest, ctx: HandlerCtx, doFetch: typeof fetch): Promise<IrResponse | ReadableStream<IrStreamEvent>> {
-  const { upstreamModel, endpoint, apiKey } = resolveEndpoint(ir.model, ctx?.provider);
-  const translator = TRANSLATORS[endpoint.format];
+  const { upstreamModel, endpoint, apiKey } = resolveEndpoint(ir.model, ctx?.handlerId);
+  const translator = (await loadTranslators(ctx.configDir))[endpoint.format];
   if (!translator) throw new HandleIrError({ status: 400, body: "custom-auth: unsupported wire format " + endpoint.format });
 
   const upstreamIr = { ...ir, model: upstreamModel };
@@ -112,22 +116,6 @@ function setSetting(key: string, value: unknown): void {
   if (value === undefined) { setConfigValue("custom-auth", "endpoints", []); }
   else { try { setConfigValue("custom-auth", "endpoints", JSON.parse(String(value))); } catch { return; /* malformed JSON, keep prior value + manifest */ } }
   writeDynamicManifest();
-}
-
-// One first-class provider per configured endpoint (its own id, models, and account pool), so
-// each endpoint appears as a real provider rather than a namespaced model on a single "custom"
-// provider. Returns [] when no endpoints are configured. Never throws: enumeration must stay
-// cheap and safe (a config read + a best-effort key migration).
-export function resolveProviders(): Array<{ id: string; label: string; models: Record<string, { name: string }>; hasOAuth: false; accountPool: string; accounts: ReturnType<typeof accountsFor> }> {
-  try { migrateLegacyKeys(); } catch { /* best-effort */ }
-  return readEndpoints().map((e) => ({
-    id: e.id,
-    label: e.label,
-    models: Object.fromEntries(e.models.map((m) => [m, { name: m }])),
-    hasOAuth: false,
-    accountPool: e.id,
-    accounts: accountsFor(e.id),
-  }));
 }
 
 export const driver = {

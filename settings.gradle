@@ -1,0 +1,11 @@
+plugins {
+    id "org.gradle.toolchains.foojay-resolver-convention" version "0.8.0"
+}
+
+rootProject.name = "custom-auth-java"
+
+// :custom       - endpoint resolution (mirrors src/endpoints.ts resolveEndpoint) + the handleIr
+//                 composition (resolve only; translation is the host's, through the installed translator).
+// :teavm-custom - TeaVM JS export surface over :custom + :ir.
+include ":custom"
+include ":teavm-custom"
