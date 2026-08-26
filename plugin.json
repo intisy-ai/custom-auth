@@ -14,14 +14,19 @@
       "endpoints": []
     }
   },
-  "repo": {
-    "role": "Custom user-endpoint provider",
-    "category": "ai-provider",
-    "tech": "typescript"
-  },
   "services": {
     "consumes": [
       "provider-support"
+    ]
+  },
+  "publish": {
+    "scopedOnly": true
+  },
+  "repo": {
+    "role": "Custom user-endpoint provider",
+    "category": "ai-provider",
+    "tech": [
+      "typescript"
     ]
   }
 }
