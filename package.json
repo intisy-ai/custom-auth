@@ -21,7 +21,6 @@
   "files": [
     "dist/",
     "plugin.json",
-    "cairn.json",
     "README.md",
     "LICENSE"
   ],
