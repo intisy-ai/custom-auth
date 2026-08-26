@@ -9,15 +9,15 @@
     "custom-endpoints",
     "settings"
   ],
-  "config": {
-    "defaults": {
-      "endpoints": []
-    }
-  },
   "services": {
     "consumes": [
       "provider-support"
     ]
+  },
+  "config": {
+    "defaults": {
+      "endpoints": []
+    }
   },
   "publish": {
     "scopedOnly": true
@@ -27,6 +27,19 @@
     "category": "ai-provider",
     "tech": [
       "typescript"
+    ]
+  },
+  "marketplace": {
+    "categories": [
+      {
+        "id": "translators",
+        "label": "Translators",
+        "match": {
+          "topics": [
+            "vendor-translator"
+          ]
+        }
+      }
     ]
   }
 }
