@@ -1,6 +1,6 @@
 import type { Plugin, PluginContext } from "@intisy-ai/api";
 import type { CustomEndpointsCapability, SettingsCapability } from "@intisy-ai/core";
-import type { ProviderCapability, ProviderDescriptor, ProviderSupport } from "@intisy-ai/core-auth";
+import type { Provider, ProviderDescriptor, ProviderSupport } from "@intisy-ai/core-auth";
 import { driver } from "./driver.js";
 import { migrateLegacyKeys, readEndpoints, writeDynamicManifest } from "./endpoints.js";
 import { CUSTOM_SETTINGS } from "./settings.js";
@@ -53,7 +53,7 @@ const plugin: Plugin = {
     if (!support) throw new Error(`this host offers no "${PROVIDER_SUPPORT}" service, so it cannot run a provider`);
     // driver.handleIr takes typed IR params; ProviderDef declares them unknown, so strict mode
     // rejects the assignment without a cast (see index.ts's own driver: driver as never).
-    context.provide(context.capability<ProviderCapability>("provider"), support.capability(driver as never, configuredLanes));
+    context.provide(context.capability<Provider>("provider"), support.capability(driver as never, configuredLanes));
     context.provide(context.capability<CustomEndpointsCapability>("custom-endpoints"), customEndpoints());
     context.provide(context.capability<SettingsCapability>("settings"), {
       schema: () => CUSTOM_SETTINGS,

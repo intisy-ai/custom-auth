@@ -1,4 +1,4 @@
-import type { IrRequest, IrResponse, IrStreamEvent } from "@intisy-ai/core-ir";
+import type { IrRequest, IrResponse, IrStreamEvent, HandlerCtx } from "@intisy-ai/core-ir";
 import { loadTranslators } from "./translators.js";
 // @ts-ignore
 import { getConfigValue, setConfigValue, emitEvent, type ActivitySpec } from "@intisy-ai/core";
@@ -13,7 +13,6 @@ import { javaHandleEnabled, resolveEndpointViaJava } from "./javaHandle.js";
 // dist/index.js and dist/handler.js, so it needs the same one-time wiring.
 setActivityEmitter((spec: ActivitySpec, source: string) => emitEvent(spec, source));
 
-type HandlerCtx = { configDir: string; log: (m: string) => void; model: string; provider?: string };
 type HandleIrDeps = { fetch?: typeof fetch };
 
 export { HandleIrError };
