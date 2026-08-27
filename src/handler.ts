@@ -1,5 +1,4 @@
 import { providerHandlerExports, setActivityEmitter } from "@intisy-ai/core-auth";
-// @ts-ignore
 import { emitEvent, type ActivitySpec } from "@intisy-ai/core";
 import { driver } from "./driver.js";
 

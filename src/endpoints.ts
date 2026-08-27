@@ -1,7 +1,5 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-// core's build (tsc --noEmit + esbuild bundle) ships no declaration file for its dist.
-// @ts-ignore
 import { getConfigValue, setConfigValue } from "@intisy-ai/core";
 import { AccountManager, addAccount, removeAccount, getConfigDir, cacheDir } from "@intisy-ai/core-auth";
 import { HandleIrError } from "./errors.js";

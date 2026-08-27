@@ -1,6 +1,4 @@
 import { defineProviderPlugin, setActivityEmitter } from "@intisy-ai/core-auth";
-// core's build (tsc --noEmit + esbuild bundle) ships no declaration file for its dist.
-// @ts-ignore
 import { emitEvent, type ActivitySpec } from "@intisy-ai/core";
 import { driver } from "./driver.js";
 import { writeDynamicManifest } from "./endpoints.js";

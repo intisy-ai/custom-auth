@@ -1,6 +1,5 @@
 import type { IrRequest, IrResponse, IrStreamEvent, HandlerCtx } from "@intisy-ai/core-ir";
 import { loadTranslators } from "./translators.js";
-// @ts-ignore
 import { getConfigValue, setConfigValue, emitEvent, type ActivitySpec } from "@intisy-ai/core";
 import { toSettingsGroups, setActivityEmitter, type ProviderSettingsSchema } from "@intisy-ai/core-auth";
 import { resolveEndpoint, readEndpoints, advertisedModels, splitModel, writeDynamicManifest, keyFor } from "./endpoints.js";
