@@ -1,7 +1,7 @@
 import { defineProviderPlugin, setActivityEmitter } from "@intisy-ai/core-auth";
 // core's build (tsc --noEmit + esbuild bundle) ships no declaration file for its dist.
 // @ts-ignore
-import { emitEvent } from "@intisy-ai/core";
+import { emitEvent, type ActivitySpec } from "@intisy-ai/core";
 import { driver } from "./driver.js";
 import { writeDynamicManifest } from "./endpoints.js";
 
@@ -10,7 +10,7 @@ import { writeDynamicManifest } from "./endpoints.js";
 if (import.meta.url.includes("/dist/")) { try { writeDynamicManifest(); } catch { /* best-effort */ } }
 
 // Best-effort: let core-auth's account activity (added/removed/login/rate_limited/models_refreshed) flow onto the bus.
-setActivityEmitter((spec: unknown, source: string) => emitEvent(spec, source));
+setActivityEmitter((spec: ActivitySpec, source: string) => emitEvent(spec, source));
 
 export const CustomProvider = await defineProviderPlugin({
   name: "custom-auth",

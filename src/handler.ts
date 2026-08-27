@@ -1,13 +1,13 @@
 import { providerHandlerExports, setActivityEmitter } from "@intisy-ai/core-auth";
 // @ts-ignore
-import { emitEvent } from "@intisy-ai/core";
+import { emitEvent, type ActivitySpec } from "@intisy-ai/core";
 import { driver } from "./driver.js";
 
 // This bundle (dist/handler.js) is loaded independently of dist/index.js (the Claude proxy
 // daemon and the loader's account-menu, plus each dynamic per-endpoint provider, load it
 // directly), so it carries its own copy of core-auth's module-level emitter and needs its own
 // one-time wiring.
-setActivityEmitter((spec: unknown, source: string) => emitEvent(spec, source));
+setActivityEmitter((spec: ActivitySpec, source: string) => emitEvent(spec, source));
 
 // driver has no .accounts and no .loginFlow (keys are entered directly, no OAuth), so
 // providerHandlerExports naturally omits accounts/menu/menuModel/loginFlow.

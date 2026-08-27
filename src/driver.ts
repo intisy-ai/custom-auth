@@ -1,7 +1,7 @@
 import type { IrRequest, IrResponse, IrStreamEvent } from "@intisy-ai/core-ir";
 import { loadTranslators } from "./translators.js";
 // @ts-ignore
-import { getConfigValue, setConfigValue, emitEvent } from "@intisy-ai/core";
+import { getConfigValue, setConfigValue, emitEvent, type ActivitySpec } from "@intisy-ai/core";
 import { toSettingsGroups, setActivityEmitter, type ProviderSettingsSchema } from "@intisy-ai/core-auth";
 import { resolveEndpoint, readEndpoints, advertisedModels, splitModel, writeDynamicManifest, keyFor } from "./endpoints.js";
 import { HandleIrError, handleIrErrorFromResponse } from "./errors.js";
@@ -11,7 +11,7 @@ import { javaHandleEnabled, resolveEndpointViaJava } from "./javaHandle.js";
 // (addAccount/removeAccount), which can emit account activity. dist/driver.js is its own
 // esbuild bundle with its own copy of core-auth's module-level emitter, separate from
 // dist/index.js and dist/handler.js, so it needs the same one-time wiring.
-setActivityEmitter((spec: unknown, source: string) => emitEvent(spec, source));
+setActivityEmitter((spec: ActivitySpec, source: string) => emitEvent(spec, source));
 
 type HandlerCtx = { configDir: string; log: (m: string) => void; model: string; provider?: string };
 type HandleIrDeps = { fetch?: typeof fetch };
