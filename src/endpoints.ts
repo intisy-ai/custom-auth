@@ -191,9 +191,10 @@ export function migrateLegacyKeys(): void {
   const legacy = poolAccounts(LEGACY_POOL);
   for (const account of legacy) {
     const endpointId = account.meta?.endpointId;
-    if (!endpointId || !account.refresh) continue;
-    const alreadyMoved = poolAccounts(endpointId).some((a) => a.refresh === account.refresh);
-    if (!alreadyMoved) addAccount(endpointId, { ...account, id: endpointId }, undefined);
+    const refresh = account.refresh;
+    if (!endpointId || !refresh) continue;
+    const alreadyMoved = poolAccounts(endpointId).some((a) => a.refresh === refresh);
+    if (!alreadyMoved) addAccount(endpointId, { ...account, id: endpointId, refresh }, undefined);
     if (account.id) removeAccount(LEGACY_POOL, account.id, undefined);
   }
 }
