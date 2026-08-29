@@ -8,7 +8,7 @@ plugins {
 dependencies {
     // teavm transpiles :ir's + :custom's pure types -- no gson/net/nio/etc, matching
     // their own zero-dependency policy.
-    githubImplementation "intisy-ai:basekit:4.0.0:ir"
+    githubImplementation "intisy-ai:basekit:4.2.0:ir"
     implementation project(":custom")
     teavm teavm.libs.jsoApis
 }
