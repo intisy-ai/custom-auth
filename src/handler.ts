@@ -1,10 +1,10 @@
-import { providerHandlerExports, setActivityEmitter } from "@intisy-ai/core-auth";
-import { emitEvent, type ActivitySpec } from "@intisy-ai/core";
+import { providerHandlerExports, setActivityEmitter } from "@intisy-ai/basekit/auth";
+import { emitEvent, type ActivitySpec } from "@intisy-ai/basekit";
 import { driver } from "./driver.js";
 
 // This bundle (dist/handler.js) is loaded independently of dist/index.js (the Claude proxy
 // daemon and the loader's account-menu, plus each dynamic per-endpoint provider, load it
-// directly), so it carries its own copy of core-auth's module-level emitter and needs its own
+// directly), so it carries its own copy of basekit/auth's module-level emitter and needs its own
 // one-time wiring.
 setActivityEmitter((spec: ActivitySpec, source: string) => emitEvent(spec, source));
 

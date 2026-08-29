@@ -5,7 +5,7 @@ import { join } from "node:path";
 // in a home's shared store. This plugin vendors no translator, so its own tests cannot borrow a
 // real one: what they exercise is this plugin's orchestration (resolve, key, fetch, hand to the
 // translator), and the vendor's encode/decode correctness is that translator repo's own tests.
-// Only core-ir's IR shape is assumed here, nothing else.
+// Only basekit/ir's IR shape is assumed here, nothing else.
 const FAKE_TRANSLATOR = `
 const decoder = new TextDecoder();
 

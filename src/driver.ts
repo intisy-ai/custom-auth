@@ -1,14 +1,14 @@
-import type { IrRequest, IrResponse, IrStreamEvent, HandlerCtx } from "@intisy-ai/core-ir";
+import type { IrRequest, IrResponse, IrStreamEvent, HandlerCtx } from "@intisy-ai/basekit/ir";
 import { loadTranslators } from "./translators.js";
-import { getConfigValue, setConfigValue, emitEvent, type ActivitySpec } from "@intisy-ai/core";
-import { toSettingsGroups, setActivityEmitter, type ProviderSettingsSchema } from "@intisy-ai/core-auth";
+import { getConfigValue, setConfigValue, emitEvent, type ActivitySpec } from "@intisy-ai/basekit";
+import { toSettingsGroups, setActivityEmitter, type ProviderSettingsSchema } from "@intisy-ai/basekit/auth";
 import { resolveEndpoint, readEndpoints, advertisedModels, splitModel, writeDynamicManifest, keyFor } from "./endpoints.js";
 import { HandleIrError, handleIrErrorFromResponse } from "./errors.js";
 import { javaHandleEnabled, resolveEndpointViaJava } from "./javaHandle.js";
 
-// endpoints.ts routes its per-endpoint key pools through core-auth's AccountManager
+// endpoints.ts routes its per-endpoint key pools through basekit/auth's AccountManager
 // (addAccount/removeAccount), which can emit account activity. dist/driver.js is its own
-// esbuild bundle with its own copy of core-auth's module-level emitter, separate from
+// esbuild bundle with its own copy of basekit/auth's module-level emitter, separate from
 // dist/index.js and dist/handler.js, so it needs the same one-time wiring.
 setActivityEmitter((spec: ActivitySpec, source: string) => emitEvent(spec, source));
 
@@ -83,7 +83,7 @@ export async function handleIr(ir: IrRequest, ctx: HandlerCtx, deps: HandleIrDep
 }
 
 // Namespaced advertised models (`<endpointId>/<model>`) as the ProviderModel record
-// core-auth/the loader expect, labeled with the endpoint's own label for display.
+// basekit/auth and the loader expect, labeled with the endpoint's own label for display.
 function buildModels(): Record<string, { name: string }> {
   const labelById = new Map(readEndpoints().map((e) => [e.id, e.label]));
   const out: Record<string, { name: string }> = {};
@@ -96,7 +96,7 @@ function buildModels(): Record<string, { name: string }> {
 
 // Endpoints are edited as a single JSON-array field: their shape (baseUrl/format/models[])
 // doesn't fit the flat bool/enum/number/string fields the settings editor otherwise supports.
-// The API key is never part of this: it lives in core-auth's account store (see saveKey/keyFor
+// The API key is never part of this: it lives in basekit/auth's account store (see saveKey/keyFor
 // in endpoints.ts), reachable only through the Accounts menu, not Settings.
 export const CUSTOM_SETTINGS_SCHEMA: ProviderSettingsSchema = [
   { title: "Endpoints", fields: [

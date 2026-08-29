@@ -11,7 +11,7 @@ function seed(endpoints: unknown[]): string {
 }
 
 describe("custom-auth config + key seeding", () => {
-  it("advertises endpoint-namespaced models and stores the key via core-auth (not in config)", async () => {
+  it("advertises endpoint-namespaced models and stores the key via basekit/auth (not in config)", async () => {
     process.env.HUB_CONFIG_DIR = seed([
       { id: "a", label: "A", baseUrl: "https://a/v1", format: "openai", models: ["m1", "m2"] },
       { id: "b", label: "B", baseUrl: "https://b/v1", format: "openai", models: ["x"] },
@@ -23,6 +23,6 @@ describe("custom-auth config + key seeding", () => {
     const { keyFor } = await import("../endpoints.js");
     expect(keyFor("a")).toBe("sk-secret");
     const cfgText = readFileSync(join(process.env.HUB_CONFIG_DIR!, "config", "custom-auth.json"), "utf8");
-    expect(cfgText).not.toContain("sk-secret"); // key is in accounts.json (core-auth), never config
+    expect(cfgText).not.toContain("sk-secret"); // key is in accounts.json (basekit/auth), never config
   });
 });

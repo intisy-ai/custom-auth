@@ -60,7 +60,7 @@ describe("keyFor / migrateLegacyKeys: per-endpoint pools with a legacy fallback"
     vi.resetModules();
     seedHome({ custom: { accounts: [{ id: "local", refresh: "sk-legacy", enabled: true, meta: { endpointId: "local" } }], activeIndex: 0, activeIndexByLane: {} } });
     const { migrateLegacyKeys, keyFor } = await import("../endpoints.js");
-    const { listAccounts } = await import("@intisy-ai/core-auth");
+    const { listAccounts } = await import("@intisy-ai/basekit/auth");
     migrateLegacyKeys();
     expect((listAccounts("local", undefined) as Array<{ refresh?: string }>).some((a) => a.refresh === "sk-legacy")).toBe(true);
     expect(listAccounts("custom", undefined)).toHaveLength(0);

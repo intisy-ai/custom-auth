@@ -1,6 +1,6 @@
 import type { Plugin, PluginContext } from "@intisy-ai/api";
-import type { CustomEndpointsCapability, SettingsCapability } from "@intisy-ai/core";
-import type { Provider, ProviderDescriptor, ProviderSupport } from "@intisy-ai/core-auth";
+import type { CustomEndpointsCapability, SettingsCapability } from "@intisy-ai/basekit";
+import type { Provider, ProviderDescriptor, ProviderSupport } from "@intisy-ai/basekit/auth";
 import { driver } from "./driver.js";
 import { migrateLegacyKeys, readEndpoints, writeDynamicManifest } from "./endpoints.js";
 import { CUSTOM_SETTINGS } from "./settings.js";

@@ -1,7 +1,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { getConfigValue, setConfigValue } from "@intisy-ai/core";
-import { AccountManager, addAccount, removeAccount, getConfigDir, cacheDir } from "@intisy-ai/core-auth";
+import { getConfigValue, setConfigValue } from "@intisy-ai/basekit";
+import { AccountManager, addAccount, removeAccount, getConfigDir, cacheDir } from "@intisy-ai/basekit/auth";
 import { HandleIrError } from "./errors.js";
 import { supportedFormats } from "./translators.js";
 
@@ -91,7 +91,7 @@ export function endpointViews(): Array<Endpoint & { hasKey: boolean }> {
   return readEndpoints().map((e) => ({ ...e, hasKey: !!keyFor(e.id) }));
 }
 
-// Reads a pool through core-auth's AccountManager (the same shared engine every other
+// Reads a pool through basekit/auth's AccountManager (the same shared engine every other
 // provider's account pool goes through), instead of a raw store read, so an endpoint's keys
 // participate in the same account machinery as any other provider's accounts.
 function poolAccounts(providerId: string): StoredAccount[] {
@@ -129,7 +129,7 @@ export function advertisedModels(): string[] {
   return readEndpoints().flatMap((e) => e.models.map((m) => e.id + "/" + m));
 }
 
-// Seeds the key into core-auth's account store (accounts.json), never into config/custom-auth.json.
+// Seeds the key into basekit/auth's account store (accounts.json), never into config/custom-auth.json.
 export function saveKey(endpointId: string, key: string): void {
   addAccount(endpointId, { id: endpointId, refresh: key, enabled: true, meta: { endpointId } }, undefined);
 }

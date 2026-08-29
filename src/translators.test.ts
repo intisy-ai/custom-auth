@@ -32,7 +32,7 @@ describe("formatOf", () => {
   });
 
   it("ignores a package that is not a translator", () => {
-    expect(formatOf("@intisy-ai/core-auth")).toBeNull();
+    expect(formatOf("@intisy-ai/basekit/auth")).toBeNull();
     expect(formatOf("@intisy-ai/-translator")).toBeNull();
   });
 });

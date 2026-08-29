@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { providerSupport } from "@intisy-ai/core-auth";
+import { providerSupport } from "@intisy-ai/basekit/auth";
 import { mkdtempSync, readFileSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -54,7 +54,7 @@ describe("the custom-auth api plugin", () => {
   });
 
   it("advertises one lane per configured endpoint, after its own", async () => {
-    const { setConfigValue } = await import("@intisy-ai/core");
+    const { setConfigValue } = await import("@intisy-ai/basekit");
     setConfigValue("custom-auth", "endpoints", [
       { id: "mine", label: "Mine", baseUrl: "https://api.example.com/v1", format: "openai", models: ["m"] },
     ]);
@@ -80,7 +80,7 @@ describe("the custom-auth api plugin", () => {
 
 describe("writeDynamicManifest", () => {
   it("writes the home's cache file, keyed by this plugin's id", async () => {
-    const { setConfigValue } = await import("@intisy-ai/core");
+    const { setConfigValue } = await import("@intisy-ai/basekit");
     setConfigValue("custom-auth", "endpoints", [
       { id: "mine", label: "Mine", baseUrl: "https://api.example.com/v1", format: "openai", models: ["m"] },
     ]);

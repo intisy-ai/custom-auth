@@ -2,7 +2,7 @@
 // The delegation shell for custom-auth's Java-backed endpoint RESOLUTION (java/custom +
 // java/teavm-custom), mirroring antigravity-auth's driver/javaHandle.ts split of responsibility:
 // the Java side owns which endpoint and upstream model a request maps to, this shell owns host
-// I/O (the actual fetch) and the per-endpoint API key lookup (core-auth's AccountManager, via
+// I/O (the actual fetch) and the per-endpoint API key lookup (basekit/auth's AccountManager, via
 // endpoints.ts).
 //
 // Translation is deliberately NOT delegated here. This provider speaks whatever wire formats are
@@ -12,7 +12,7 @@
 // Dormant by default: driver.ts only calls into this module when HUB_CUSTOM_AUTH_JAVA_HANDLE=1,
 // so the TS resolveEndpoint path stays the live default.
 
-import { lazyModule } from "@intisy-ai/core-auth";
+import { lazyModule } from "@intisy-ai/basekit/auth";
 import { HandleIrError } from "./errors.js";
 
 export function javaHandleEnabled() {

@@ -1,7 +1,7 @@
 import { existsSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
-import type { IrRequest, IrResponse, IrStreamEvent } from "@intisy-ai/core-ir";
+import type { IrRequest, IrResponse, IrStreamEvent } from "@intisy-ai/basekit/ir";
 
 // A translator speaks one vendor's wire format. Described structurally rather than as the type
 // of a particular translator: this plugin vendors none, so no vendor is more canonical here
