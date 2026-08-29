@@ -1,7 +1,7 @@
 // Endpoint resolution + handleIr composition. Zero-dependency beyond :ir (TeaVM-clean:
 // no java.net/nio/reflection/threads), so :teavm-custom can transpile this module verbatim.
 dependencies {
-    githubCompileOnly "intisy-ai:basekit:4.2.0:ir"
-    githubTestImplementation "intisy-ai:basekit:4.2.0:ir"
+    githubCompileOnly "intisy-ai:basekit:4.3.0:ir"
+    githubTestImplementation "intisy-ai:basekit:4.3.0:ir"
 
 }
