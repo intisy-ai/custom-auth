@@ -1,4 +1,4 @@
-import type { Plugin, PluginContext } from "@intisy-ai/api";
+import type { Plugin, PluginContext } from "@intisy/bayonet";
 import type { CustomEndpointsCapability, SettingsCapability } from "@intisy-ai/basekit";
 import type { Provider, ProviderDescriptor, ProviderSupport } from "@intisy-ai/basekit/auth";
 import { driver } from "./driver.js";
