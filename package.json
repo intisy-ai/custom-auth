@@ -36,7 +36,7 @@
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
-    "@intisy/bayonet": "^1.7.0",
+    "@intisy/bayonet": "^1.8.0",
     "@types/node": "^22.0.0",
     "esbuild": "^0.21.5",
     "typescript": "^5.6.0",
