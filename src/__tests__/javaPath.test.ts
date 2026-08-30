@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, afterEach } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -14,17 +14,12 @@ function seedHome(): string {
   return home;
 }
 
-// The Java path is endpoint RESOLUTION in Java plus translation through the installed
-// translator. Encode/decode parity with a vendor's Java is that translator repo's own concern
-// now: this plugin binds no vendor at build time and has none to compare against.
-describe("custom-auth handleIr (Java path, HUB_CUSTOM_AUTH_JAVA_HANDLE=1)", () => {
-  afterEach(() => {
-    delete process.env.HUB_CUSTOM_AUTH_JAVA_HANDLE;
-  });
-
-  it("resolves + encodes via java/custom and decodes the upstream response back to IR", async () => {
+// Resolution is the transpiled Java's decision and translation is the installed translator's, so
+// what these assert is the seam between them: the endpoint the Java picked is the one called, with
+// the upstream model it un-namespaced, and a resolve failure crosses back as a typed error.
+describe("custom-auth handleIr, resolving through the transpiled java", () => {
+  it("calls the endpoint the java resolved, with the model it un-namespaced", async () => {
     process.env.HUB_CONFIG_DIR = seedHome();
-    process.env.HUB_CUSTOM_AUTH_JAVA_HANDLE = "1";
     const fetchStub = vi.fn(async () => new Response(JSON.stringify({
       id: "chatcmpl-1", model: "gpt-4o",
       choices: [{ index: 0, finish_reason: "stop", message: { role: "assistant", content: "hi there" } }],
@@ -46,7 +41,6 @@ describe("custom-auth handleIr (Java path, HUB_CUSTOM_AUTH_JAVA_HANDLE=1)", () =
 
   it("throws a duck-typed HandleIrError for an unknown endpoint", async () => {
     process.env.HUB_CONFIG_DIR = seedHome();
-    process.env.HUB_CUSTOM_AUTH_JAVA_HANDLE = "1";
     const { handleIr } = await import("../driver.js");
     const ir = { model: "ghost/gpt-4o", messages: [], stream: false } as never;
     await expect(handleIr(ir, { configDir: process.env.HUB_CONFIG_DIR!, log: () => {}, model: "ghost/gpt-4o" }, { fetch: vi.fn() } as never))

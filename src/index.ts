@@ -10,6 +10,7 @@ if (import.meta.url.includes("/dist/")) { try { writeDynamicManifest(); } catch 
 // Best-effort: let basekit/auth's account activity (added/removed/login/rate_limited/models_refreshed) flow onto the bus.
 setActivityEmitter((spec: ActivitySpec, source: string) => emitEvent(spec, source));
 
+/** What an app that invokes every exported function loads; an api host reads the default export. */
 export const CustomProvider = await defineProviderPlugin({
   name: "custom-auth",
   driver: driver as never, // ProviderDef still declares the legacy `handle` field; this provider is handleIr-only

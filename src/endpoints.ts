@@ -3,21 +3,25 @@ import { join } from "node:path";
 import { getConfigValue, setConfigValue } from "@intisy-ai/basekit";
 import { AccountManager, addAccount, removeAccount, getConfigDir, cacheDir } from "@intisy-ai/basekit/auth";
 import { HandleIrError } from "./errors.js";
+import * as java from "./java.js";
 import { supportedFormats } from "./translators.js";
 
 // Re-exported so a host reaches every endpoint rule through one module, the way it already
 // does for validation and storage.
 export { supportedFormats };
 
+/** A configured endpoint: where to send a request, in what wire format, for which models. */
 export type Endpoint = { id: string; label: string; baseUrl: string; format: string; models: string[] };
 
-// This plugin vendors no translator, so it speaks nothing on its own: supportedFormats()
-// answers with whatever is installed in the home's shared store. Kept exported, and empty,
-// for hosts that predate the async call, since claiming a format no translator provides is
-// how an endpoint came to be accepted and then fail at request time.
+/**
+ * The wire formats this plugin speaks on its own, which is none.
+ *
+ * @remarks
+ * It vendors no translator, so {@link supportedFormats} answers with whatever is installed in the
+ * home's shared store. Kept exported, and empty, for hosts that predate the async call: claiming a
+ * format no translator provides is how an endpoint came to be accepted and then fail at request time.
+ */
 export const SUPPORTED_FORMATS: readonly string[] = [];
-
-const ID_PATTERN = /^[A-Za-z0-9._-]+$/;
 
 type StoredAccount = { id?: string; enabled?: boolean; refresh?: string; meta?: { endpointId?: string } };
 
@@ -27,68 +31,80 @@ type StoredAccount = { id?: string; enabled?: boolean; refresh?: string; meta?: 
 // migrateLegacyKeys moves them across.
 const LEGACY_POOL = "custom";
 
-// defineConfig registration happens once, in index.ts's prologue (before the config-CLI guard);
-// this only reads the already-registered config, so it works standalone (e.g. from tests that
-// never import index.ts) and doesn't re-declare the schema on every call.
+/**
+ * The endpoints this home has configured.
+ *
+ * @remarks
+ * `defineConfig` registration happens once, in index.ts's prologue before the config-CLI guard; this
+ * only reads what is already registered, so it works standalone from a test that never imports
+ * index.ts and re-declares no schema.
+ *
+ * @returns the configured endpoints, empty when none are
+ */
 export function readEndpoints(): Endpoint[] {
   const endpoints = getConfigValue("custom-auth", "endpoints");
   return Array.isArray(endpoints) ? (endpoints as Endpoint[]) : [];
 }
 
-// The one rule set for what makes an endpoint usable, applied wherever an endpoint is added:
-// the dashboard's editor, a loader's Providers view, or anything added later. Returns the
-// reason it would not work, or null.
-export function validateEndpoint(endpoint: Partial<Endpoint>, opts: { existing?: Endpoint[]; rejectDuplicate?: boolean; formats?: string[] } = {}): string | null {
-  const id = (endpoint.id || "").trim();
-  if (!id) return "endpoint id is required";
-  if (!ID_PATTERN.test(id)) return "endpoint id may only use letters, numbers, dot, dash and underscore";
-  if (opts.rejectDuplicate && (opts.existing ?? readEndpoints()).some((e) => e.id === id)) {
-    return `there is already an endpoint called ${id}`;
-  }
-  if (!(endpoint.label || "").trim()) return "label is required";
-  const baseUrl = (endpoint.baseUrl || "").trim();
-  if (!baseUrl) return "base URL is required";
-  try {
-    const parsed = new URL(baseUrl);
-    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return "base URL must be http or https";
-  } catch {
-    return "base URL is not a valid URL";
-  }
-  const allowed = opts.formats ?? (SUPPORTED_FORMATS as readonly string[]);
-  if (!allowed.includes(endpoint.format || "")) return "unsupported wire format: " + endpoint.format;
-  // An endpoint with no models advertises nothing, so it is a provider that can never serve.
-  if (!Array.isArray(endpoint.models) || endpoint.models.length === 0) return "at least one model id is required";
-  return null;
+/**
+ * Why an endpoint would not work, applied wherever one is added: the dashboard's editor, a loader's
+ * Providers view, or anything added later.
+ *
+ * @param endpoint - the endpoint being added or replaced
+ * @param opts - the endpoints to check for a duplicate against, whether a duplicate is a problem,
+ *               and the wire formats a translator is installed for
+ * @returns the reason it would not work, or null when it would
+ */
+export function validateEndpoint(
+  endpoint: Partial<Endpoint>,
+  opts: { existing?: Endpoint[]; rejectDuplicate?: boolean; formats?: string[] } = {},
+): string | null {
+  return java.validateEndpoint(
+    opts.existing ?? readEndpoints(),
+    endpoint,
+    opts.rejectDuplicate === true,
+    opts.formats ?? SUPPORTED_FORMATS,
+  );
 }
 
-// Adds or replaces an endpoint and makes it routable in one step: validate, store, then
-// re-materialise the manifest the provider scan reads. A host calls this instead of writing
-// the config itself, so every route in has the same rules and the same follow-through.
-/** @param repoDir - accepted for callers that still pass a checkout path; the manifest now lives in the home. */
+/**
+ * Adds or replaces an endpoint and makes it routable in one step.
+ *
+ * @remarks
+ * A host calls this instead of writing the config itself, so every route in has the same rules and
+ * the same follow-through. Whether a format is usable is asked rather than assumed: it is valid when
+ * a translator for it is actually installed, which the bundled floor alone cannot answer.
+ *
+ * @param endpoint - the endpoint to add, or to replace the one sharing its id
+ * @param repoDir - accepted for callers that still pass a checkout path; the manifest lives in the home
+ */
 export async function upsertEndpoint(endpoint: Endpoint, repoDir?: string): Promise<void> {
   const endpoints = readEndpoints();
-  // Asked rather than assumed: a format is valid when a translator for it is actually
-  // installed, which the bundled floor alone cannot answer.
   const problem = validateEndpoint(endpoint, { existing: endpoints, formats: await supportedFormats(getConfigDir()) });
   if (problem) throw new Error(problem);
-  const index = endpoints.findIndex((e) => e.id === endpoint.id);
-  const next = endpoints.slice();
-  if (index >= 0) next[index] = endpoint;
-  else next.push(endpoint);
-  setConfigValue("custom-auth", "endpoints", next);
+  setConfigValue("custom-auth", "endpoints", java.upsertEndpoint(endpoints, endpoint));
   writeDynamicManifest();
 }
 
-/** @param repoDir - accepted for callers that still pass a checkout path; the manifest now lives in the home. */
+/**
+ * Drops an endpoint, its key pool and its lane together.
+ *
+ * @param id - the endpoint id to remove
+ * @param repoDir - accepted for callers that still pass a checkout path; the manifest lives in the home
+ */
 export function removeEndpoint(id: string, repoDir?: string): void {
-  setConfigValue("custom-auth", "endpoints", readEndpoints().filter((e) => e.id !== id));
+  setConfigValue("custom-auth", "endpoints", java.removeEndpoint(readEndpoints(), id));
   removeAccount(id, id, undefined);
   writeDynamicManifest();
 }
 
-// Each endpoint with whether a key has been entered for it, which is what a host lists.
+/**
+ * Each endpoint with whether a key has been entered for it, which is what a host lists.
+ *
+ * @returns every configured endpoint, each carrying its key state
+ */
 export function endpointViews(): Array<Endpoint & { hasKey: boolean }> {
-  return readEndpoints().map((e) => ({ ...e, hasKey: !!keyFor(e.id) }));
+  return readEndpoints().map((endpoint) => ({ ...endpoint, hasKey: hasKey(endpoint.id) }));
 }
 
 // Reads a pool through basekit/auth's AccountManager (the same shared engine every other
@@ -98,38 +114,65 @@ function poolAccounts(providerId: string): StoredAccount[] {
   return new AccountManager(providerId, {}).list() as StoredAccount[];
 }
 
-export function splitModel(model: string): { endpointId: string; upstreamModel: string } {
-  const slash = model.indexOf("/");
-  if (slash < 0) throw new HandleIrError({ status: 400, body: "custom-auth: model must be <endpointId>/<model>, got: " + model });
-  return { endpointId: model.slice(0, slash), upstreamModel: model.slice(slash + 1) };
-}
-
-export function keyFor(endpointId: string): string {
+function storedKey(endpointId: string): string | undefined {
   const own = poolAccounts(endpointId).find((a) => a.enabled !== false && a.refresh);
   if (own?.refresh) return own.refresh;
-  const legacy = poolAccounts(LEGACY_POOL).find((a) => a.enabled !== false && a.refresh && a.meta?.endpointId === endpointId);
-  if (legacy?.refresh) return legacy.refresh;
-  throw new HandleIrError({ status: 401, body: "custom-auth: no API key configured for endpoint " + endpointId });
+  const legacy = poolAccounts(LEGACY_POOL).find(
+    (a) => a.enabled !== false && a.refresh && a.meta?.endpointId === endpointId,
+  );
+  return legacy?.refresh;
 }
 
-// Resolves the endpoint to serve. The resolved provider id (HandlerCtx.handlerId) names the
-// endpoint directly and the model is the raw upstream model; a namespaced <endpointId>/<model>
-// is the back-compat fallback when no provider id is supplied.
-export function resolveEndpoint(model: string, provider?: string): { endpointId: string; upstreamModel: string; endpoint: Endpoint; apiKey: string } {
-  const endpoints = readEndpoints();
-  const byProvider = provider ? endpoints.find((e) => e.id === provider) : undefined;
-  const endpointId = byProvider ? byProvider.id : splitModel(model).endpointId;
-  const upstreamModel = byProvider ? model : splitModel(model).upstreamModel;
-  const endpoint = endpoints.find((e) => e.id === endpointId);
-  if (!endpoint) throw new HandleIrError({ status: 400, body: "custom-auth: unknown endpoint " + endpointId });
-  return { endpointId, upstreamModel, endpoint, apiKey: keyFor(endpointId) };
+function hasKey(endpointId: string): boolean {
+  return storedKey(endpointId) !== undefined;
 }
 
+/**
+ * The API key configured for an endpoint.
+ *
+ * @param endpointId - the endpoint to look a key up for
+ * @returns the key
+ * @throws HandleIrError with a 401 when no key has been entered, which is the host's own answer
+ */
+export function keyFor(endpointId: string): string {
+  const key = storedKey(endpointId);
+  if (key === undefined) {
+    throw new HandleIrError({ status: 401, body: "custom-auth: no API key configured for endpoint " + endpointId });
+  }
+  return key;
+}
+
+/**
+ * Resolves the endpoint to serve, and the key to serve it with.
+ *
+ * @param model - the model the request names
+ * @param provider - the resolved provider id, which names an endpoint directly
+ * @returns the endpoint, the model to send upstream, and the API key
+ * @throws HandleIrError when no configured endpoint answers, or none has a key
+ */
+export function resolveEndpoint(
+  model: string,
+  provider?: string,
+): { endpointId: string; upstreamModel: string; endpoint: Endpoint; apiKey: string } {
+  const resolved = java.resolveEndpoint(readEndpoints(), model, provider);
+  return { ...resolved, apiKey: keyFor(resolved.endpointId) };
+}
+
+/**
+ * Every model the configured endpoints advertise, each namespaced by the endpoint offering it.
+ *
+ * @returns the namespaced `<endpointId>/<model>` ids
+ */
 export function advertisedModels(): string[] {
-  return readEndpoints().flatMap((e) => e.models.map((m) => e.id + "/" + m));
+  return Object.keys(java.displayNames(readEndpoints()));
 }
 
-// Seeds the key into basekit/auth's account store (accounts.json), never into config/custom-auth.json.
+/**
+ * Seeds a key into basekit/auth's account store, never into `config/custom-auth.json`.
+ *
+ * @param endpointId - the endpoint the key belongs to
+ * @param key - the API key to store
+ */
 export function saveKey(endpointId: string, key: string): void {
   addAccount(endpointId, { id: endpointId, refresh: key, enabled: true, meta: { endpointId } }, undefined);
 }
@@ -137,17 +180,16 @@ export function saveKey(endpointId: string, key: string): void {
 /** This plugin's id, which is also its clone directory and the key its lanes are filed under. */
 const PLUGIN_ID = "custom-auth";
 
-export type DynamicProviderEntry = { name: string; repo: string; handler: string; translator: string; accountPool: string };
+/** One routable lane, in the shape a host's provider scan reads out of the app home. */
+export type DynamicProviderEntry = java.ManifestLane;
 
-/** One routable lane per configured endpoint, in the shape a host's provider scan reads. */
+/**
+ * One routable lane per configured endpoint.
+ *
+ * @returns the lanes, in configuration order
+ */
 export function buildDynamicManifest(): DynamicProviderEntry[] {
-  return readEndpoints().map((endpoint) => ({
-    name: endpoint.id,
-    repo: PLUGIN_ID,
-    handler: "dist/handler.js",
-    translator: "custom",
-    accountPool: endpoint.id,
-  }));
+  return java.dynamicManifest(readEndpoints());
 }
 
 function dynamicManifestPath(): string {
@@ -183,8 +225,12 @@ export function writeDynamicManifest(): void {
   } catch { /* best-effort */ }
 }
 
-// Moves any pre-split keys from the shared "custom" pool into their own per-endpoint pool.
-// Idempotent and best-effort: a key already present under its endpoint pool is left in place.
+/**
+ * Moves any pre-split keys from the shared "custom" pool into their own per-endpoint pool.
+ *
+ * @remarks
+ * Idempotent and best-effort: a key already present under its endpoint pool is left in place.
+ */
 export function migrateLegacyKeys(): void {
   const legacy = poolAccounts(LEGACY_POOL);
   for (const account of legacy) {

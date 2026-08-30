@@ -5,8 +5,9 @@ build/
 .gradle/
 docs/
 .superpowers/
-# TeaVM-compiled custom export staged by core/teavm-build.mjs at build time, never committed.
-src/generated/
+# The TeaVM bundle is build output; the .d.ts emitted beside it from the same Java IS committed, so
+# the TypeScript seam type-checks on a clean clone before anything is built.
+src/generated/custom-provider.teavm.js
 .dynamic-providers.json
 .idea/
 

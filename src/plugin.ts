@@ -3,6 +3,7 @@ import type { CustomEndpointsCapability, SettingsCapability } from "@intisy-ai/b
 import type { Provider, ProviderDescriptor, ProviderSupport } from "@intisy-ai/basekit/auth";
 import { driver } from "./driver.js";
 import { migrateLegacyKeys, readEndpoints, writeDynamicManifest } from "./endpoints.js";
+import { providerDescriptors } from "./java.js";
 import { CUSTOM_SETTINGS } from "./settings.js";
 
 /**
@@ -14,14 +15,7 @@ import { CUSTOM_SETTINGS } from "./settings.js";
  */
 function configuredLanes(): ProviderDescriptor[] {
   try { migrateLegacyKeys(); } catch { /* best-effort */ }
-  return readEndpoints().map((endpoint) => ({
-    id: endpoint.id,
-    label: endpoint.label,
-    models: Object.fromEntries(endpoint.models.map((model) => [model, { name: model }])),
-    hasOAuth: false,
-    accountPool: endpoint.id,
-    translator: "custom",
-  }));
+  return providerDescriptors(readEndpoints());
 }
 
 /** The endpoints this plugin serves, for a host listing them. */
@@ -67,4 +61,5 @@ const plugin: Plugin = {
   deactivate() {},
 };
 
+/** This plugin, as an api host loads it. */
 export default plugin;

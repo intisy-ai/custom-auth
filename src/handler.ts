@@ -10,6 +10,13 @@ setActivityEmitter((spec: ActivitySpec, source: string) => emitEvent(spec, sourc
 
 // driver has no .accounts and no .loginFlow (keys are entered directly, no OAuth), so
 // providerHandlerExports naturally omits accounts/menu/menuModel/loginFlow.
+/**
+ * Serves one request, for a host that loads this bundle rather than the whole plugin.
+ *
+ * @remarks
+ * The driver has no accounts menu and no login flow, keys being entered directly rather than
+ * obtained over OAuth, so `providerHandlerExports` naturally omits those.
+ */
 export const { handleIr } = providerHandlerExports(driver);
 // What a host needs to add an endpoint of its own: store its key, and re-materialise the
 // manifest so the new endpoint is routable straight away. A loader has no business holding

@@ -14,21 +14,37 @@ public final class CustomEndpointResolver {
     private CustomEndpointResolver() {
     }
 
+    /** A namespaced model id taken apart. */
     public static final class SplitModel {
+        /** The endpoint the model is namespaced under. */
         public final String endpointId;
+        /** The model id as the upstream knows it. */
         public final String upstreamModel;
 
+        /**
+         * @param endpointId the endpoint the model is namespaced under
+         * @param upstreamModel the model id as the upstream knows it
+         */
         public SplitModel(String endpointId, String upstreamModel) {
             this.endpointId = endpointId;
             this.upstreamModel = upstreamModel;
         }
     }
 
+    /** Which endpoint serves a request, and as which upstream model. */
     public static final class Resolution {
+        /** The endpoint's id. */
         public final String endpointId;
+        /** The model id to send upstream. */
         public final String upstreamModel;
+        /** The endpoint itself, as configured. */
         public final Endpoint endpoint;
 
+        /**
+         * @param endpointId the endpoint's id
+         * @param upstreamModel the model id to send upstream
+         * @param endpoint the endpoint itself, as configured
+         */
         public Resolution(String endpointId, String upstreamModel, Endpoint endpoint) {
             this.endpointId = endpointId;
             this.upstreamModel = upstreamModel;
@@ -36,6 +52,14 @@ public final class CustomEndpointResolver {
         }
     }
 
+    /**
+     * Takes a namespaced {@code <endpointId>/<model>} apart.
+     *
+     * @param model the namespaced model id
+     * @return its two halves
+     * @throws CustomHandleIrException when the id carries no namespace, which the host turns into a
+     *                                 400 rather than guessing an endpoint
+     */
     public static SplitModel splitModel(String model) {
         int slash = model.indexOf('/');
         if (slash < 0) {
@@ -51,6 +75,16 @@ public final class CustomEndpointResolver {
         return null;
     }
 
+    /**
+     * Resolves which configured endpoint serves a request.
+     *
+     * @param endpoints the endpoints already configured
+     * @param model the model the request names
+     * @param provider the resolved provider id naming an endpoint directly, or null to fall back to
+     *                 the namespaced form
+     * @return the endpoint and the model to send upstream
+     * @throws CustomHandleIrException when no configured endpoint answers
+     */
     public static Resolution resolve(List<Endpoint> endpoints, String model, String provider) {
         Endpoint byProvider = provider != null ? findById(endpoints, provider) : null;
         String endpointId;

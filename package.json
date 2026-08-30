@@ -28,9 +28,10 @@
     "node": ">=20.0.0"
   },
   "scripts": {
+    "emit:teavm": "node node_modules/@intisy/bayonet/scripts/emit-dts.mjs --java-dir . --module :teavm-custom --out src/generated",
     "build:teavm": "node node_modules/@intisy/bayonet/scripts/teavm-build.mjs --java-dir . --module :teavm-custom --out src/generated/custom-provider.teavm.js",
-    "build": "npm run build:teavm && npx esbuild src/index.ts --bundle --platform=node --format=esm --external:@intisy-ai/basekit --external:@intisy-ai/basekit/auth --external:@intisy-ai/basekit/ir --external:sync-bridge --outfile=dist/index.js && npx esbuild src/handler.ts --bundle --platform=node --format=esm --external:@intisy-ai/basekit --external:@intisy-ai/basekit/auth --external:@intisy-ai/basekit/ir --external:sync-bridge --outfile=dist/handler.js && npx esbuild src/driver.ts --bundle --platform=node --format=esm --external:@intisy-ai/basekit --external:@intisy-ai/basekit/auth --external:@intisy-ai/basekit/ir --external:sync-bridge --outfile=dist/driver.js && npx esbuild src/plugin.ts --bundle --platform=node --format=esm --external:@intisy-ai/basekit --external:@intisy-ai/basekit/auth --external:@intisy-ai/basekit/ir --external:sync-bridge --outfile=dist/plugin.js",
-    "test": "npm run typecheck && npm run build && vitest run",
+    "build": "npm run emit:teavm && npm run build:teavm && npx esbuild src/index.ts --bundle --platform=node --format=esm --external:@intisy-ai/basekit --external:@intisy-ai/basekit/auth --external:@intisy-ai/basekit/ir --external:sync-bridge --outfile=dist/index.js && npx esbuild src/handler.ts --bundle --platform=node --format=esm --external:@intisy-ai/basekit --external:@intisy-ai/basekit/auth --external:@intisy-ai/basekit/ir --external:sync-bridge --outfile=dist/handler.js && npx esbuild src/driver.ts --bundle --platform=node --format=esm --external:@intisy-ai/basekit --external:@intisy-ai/basekit/auth --external:@intisy-ai/basekit/ir --external:sync-bridge --outfile=dist/driver.js && npx esbuild src/plugin.ts --bundle --platform=node --format=esm --external:@intisy-ai/basekit --external:@intisy-ai/basekit/auth --external:@intisy-ai/basekit/ir --external:sync-bridge --outfile=dist/plugin.js",
+    "test": "npm run build && npm run typecheck && vitest run",
     "prepublishOnly": "npm run build",
     "typecheck": "tsc --noEmit"
   },
